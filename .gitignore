@@ -1,0 +1,43 @@
+# Dependencies
+node_modules/
+
+# Build artifacts
+dist/
+build/
+*.o
+typing.js
+typing.wasm
+
+# Keep public directory WASM files tracked (they're needed for serving)
+# Uncomment below if you want to ignore them too:
+# public/typing.js
+# public/typing.wasm
+
+# Vite
+.vite/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Emscripten cache
+.emscripten_cache/
+

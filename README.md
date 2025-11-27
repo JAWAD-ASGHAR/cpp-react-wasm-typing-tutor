@@ -1,141 +1,107 @@
 # Typing Practice Application
 
-A MonkeyType-style typing practice application built with C++ (OOP), Emscripten WebAssembly, and React.
+A typing speed test app similar to MonkeyType, built with C++ and React. Practice typing and see how fast you can go!
+
+## What is This?
+
+This is a web application where you can practice typing and measure your typing speed. The interesting part is that the core logic (generating words, tracking your accuracy, calculating your speed) runs in **C++** code that's been compiled to **WebAssembly** so it can run in your browser. The visual interface is built with **React**.
+
+Think of it like this:
+- **C++**: The "brain" that does all the calculations (fast!)
+- **WebAssembly**: The translation layer that lets C++ run in browsers
+- **React**: The "face" that shows you a nice interface
+
+## Why C++ in a Browser?
+
+Normally, C++ runs on your computer as a regular program. But with WebAssembly, we can compile C++ code so it runs inside your web browser instead of JavaScript. This means:
+- We can use C++ concepts like classes, objects, and memory management
+- The code runs very fast (nearly as fast as regular C++)
+- We still get the convenience of a web app (works on any computer with a browser)
+
+## How It Works (Simple Version)
+
+1. **WordGenerator** - Creates random sentences for you to type
+2. **TypingSession** - Keeps track of what you type and calculates your score
+3. **Timer** - Measures how long you've been typing
+4. **React Interface** - Shows everything on screen and lets you interact with it
+
+When you type, the React app sends your input to the C++ code running in WebAssembly. The C++ code calculates your accuracy and words-per-minute, then sends the results back to React to display on screen.
 
 ## Project Structure
 
 ```
-Project OOPs/
-├── C++ Source Files
-│   ├── WordGenerator.h/cpp    - Generates random word sequences
-│   ├── TypingSession.h/cpp     - Manages typing session and statistics
-│   ├── Timer.h/cpp             - Simple timer for tracking elapsed time
-│   └── bindings.cpp            - Emscripten bindings to expose C++ to JS
-├── React Application
-│   ├── src/
-│   │   ├── App.jsx             - Main React component
-│   │   ├── App.css             - Styling
-│   │   ├── wasmLoader.js       - WASM module loader and bridge
-│   │   ├── main.jsx            - React entry point
-│   │   └── index.css           - Global styles
-│   ├── index.html              - HTML template
-│   ├── package.json            - Node dependencies
-│   └── vite.config.js          - Vite configuration
-├── Makefile                    - Build script for WebAssembly
-└── README.md                   - This file
+cpp-react-wasm-typing-tutor/
+├── C++ Files (the "brain")
+│   ├── WordGenerator.cpp/h    - Creates random text
+│   ├── TypingSession.cpp/h    - Tracks typing and calculates stats
+│   ├── Timer.cpp/h            - Measures time
+│   └── bindings.cpp           - Connects C++ to JavaScript
+│
+├── React Files (the "face")
+│   ├── src/App.jsx            - Main screen
+│   ├── src/wasmLoader.js      - Loads the C++ code
+│   └── public/                - WebAssembly files go here
+│
+└── Build Files
+    ├── Makefile               - Builds the C++ code
+    └── package.json           - JavaScript dependencies
 ```
 
-## Prerequisites
+## Getting Started
 
-1. **Emscripten SDK** - For compiling C++ to WebAssembly
-   - Install from: https://emscripten.org/docs/getting_started/downloads.html
-   - Activate: `source emsdk_env.sh`
+See [QUICKSTART.md](QUICKSTART.md) for step-by-step setup instructions.
 
-2. **Node.js and npm** - For React development
-   - Install from: https://nodejs.org/
-
-## Building the Project
-
-### Step 1: Compile C++ to WebAssembly
-
-First, make sure Emscripten is activated in your terminal:
-
-```bash
-source /path/to/emsdk/emsdk_env.sh
-```
-
-Then compile the C++ code:
-
-```bash
-make
-```
-
-This will generate:
-- `typing.js` - JavaScript wrapper for WebAssembly
-- `typing.wasm` - WebAssembly binary
-
-### Step 2: Install React Dependencies
-
-```bash
-npm install
-```
-
-### Step 3: Run the Development Server
-
-```bash
-npm run dev
-```
-
-The application will be available at `http://localhost:5173` (or the port shown in terminal).
-
-## How It Works
-
-### C++ Classes
-
-1. **WordGenerator**: Contains a word list and generates random word sequences
-2. **TypingSession**: Tracks user input, calculates accuracy and WPM
-3. **Timer**: Simple timer using C++ clock functions
-
-### WebAssembly Bridge
-
-The `bindings.cpp` file exposes C++ functions to JavaScript using Emscripten's `EMSCRIPTEN_KEEPALIVE` and `extern "C"`:
-
-- `generateText(int wordCount)` - Generates random text
-- `startSession(char* text)` - Starts a new typing session
-- `updateInput(char* userTyped)` - Updates user input and calculates stats
-- `getAccuracy()` - Returns accuracy percentage
-- `getWPM(double secondsElapsed)` - Calculates words per minute
-- `resetSession()` - Resets the session
-- `getElapsedSeconds()` - Gets elapsed time
-
-### React UI
-
-The React application:
-- Loads the WASM module on mount
-- Displays generated text with color-coded feedback
-- Shows real-time statistics (WPM, accuracy, timer)
-- Handles user input and updates WASM session
-- Displays results when test completes
+Quick version:
+1. Install Emscripten (compiles C++ to WebAssembly)
+2. Install Node.js
+3. Run `make` to build
+4. Copy files to `public/`
+5. Run `npm install`
+6. Run `npm run dev`
 
 ## Features
 
-- ✅ Real-time typing feedback (correct/incorrect characters highlighted)
-- ✅ Live statistics (WPM, accuracy, timer)
-- ✅ Progress tracking
-- ✅ Clean, modern UI
-- ✅ Responsive design
+- Real-time typing speed (WPM - words per minute)
+- Accuracy tracking (% of correct characters)
+- Visual feedback (green for correct, red for mistakes)
+- Progress tracking
+- Clean, simple interface
+
+## What You Can Learn From This Project
+
+**For Beginners:**
+- How web applications work
+- What WebAssembly is
+- Basic C++ concepts (classes, functions)
+- Basic React concepts (components, state)
+
+**For More Advanced:**
+- How to compile C++ to WebAssembly using Emscripten
+- Connecting C++ code to JavaScript/React
+- Object-oriented programming in C++
+- Memory management in C++
+- Building full-stack web applications
+
+## Technologies Used
+
+- **C++**: Programming language for the core logic
+- **Emscripten**: Tool that compiles C++ to WebAssembly
+- **WebAssembly (WASM)**: Binary format that runs in browsers
+- **React**: JavaScript library for building user interfaces
+- **Vite**: Build tool that makes development easier
 
 ## Building for Production
 
-```bash
-# Compile WASM
-make
+When you're ready to share your app:
 
-# Build React app
+```bash
+make
+cp typing.js typing.wasm public/
 npm run build
 ```
 
-The production build will be in the `dist/` directory.
+The finished app will be in the `dist/` folder.
 
-## Troubleshooting
+---
 
-### Emscripten not found
-Make sure you've activated the Emscripten environment:
-```bash
-source /path/to/emsdk/emsdk_env.sh
-```
-
-### WASM module not loading
-- Ensure `typing.js` and `typing.wasm` are in the project root
-- Check browser console for errors
-- Make sure you're running a local server (Vite dev server handles this)
-
-### Build errors
-- Check that all C++ header files are present
-- Verify Emscripten version compatibility
-- Ensure all source files are in the same directory
-
-## License
-
-This project is for educational purposes.
-
+This project is for educational purposes - have fun learning!

@@ -1,8 +1,17 @@
 # Quick Start Guide
 
-## Prerequisites Setup
+Follow these steps to get the Typing Practice app running on your computer.
 
-1. **Install Emscripten:**
+## Step 1: Install Emscripten
+
+Emscripten compiles C++ code so it can run in a web browser.
+
+1. Open terminal and go to your home directory:
+   ```bash
+   cd ~
+   ```
+
+2. Download and install Emscripten:
    ```bash
    git clone https://github.com/emscripten-core/emsdk.git
    cd emsdk
@@ -11,57 +20,61 @@
    source ./emsdk_env.sh
    ```
 
-2. **Install Node.js:**
-   - Download from https://nodejs.org/
-   - Verify: `node --version` and `npm --version`
+3. Check it worked:
+   ```bash
+   emcc --version
+   ```
+   (You should see a version number)
 
-## Build & Run
+## Step 2: Install Node.js
 
-### Option 1: Using the build script
+Download and install Node.js from [nodejs.org](https://nodejs.org/). Version 16 or higher.
+
+Check it worked:
 ```bash
-./build.sh
-npm run dev
+node --version
+npm --version
 ```
 
-### Option 2: Manual steps
+## Step 3: Build the Project
 
-1. **Compile WebAssembly:**
+1. Go to your project folder:
    ```bash
-   source /path/to/emsdk/emsdk_env.sh  # Activate Emscripten
+   cd /path/to/cpp-react-wasm-typing-tutor
+   ```
+
+2. Activate Emscripten (needed every time you open a new terminal):
+   ```bash
+   source ~/emsdk/emsdk_env.sh
+   ```
+
+3. Build the WebAssembly files:
+   ```bash
    make
    ```
 
-2. **Install dependencies:**
+4. Copy the files to the public folder:
+   ```bash
+   cp typing.js typing.wasm public/
+   ```
+
+5. Install JavaScript packages:
    ```bash
    npm install
    ```
 
-3. **Run development server:**
+6. Start the app:
    ```bash
    npm run dev
    ```
 
-4. **Open browser:**
-   - Navigate to the URL shown in terminal (usually http://localhost:5173)
+7. Open your browser and go to the URL shown in terminal (usually `http://localhost:5173`)
 
-## Usage
+## How to Use
 
-1. Click **"Start Test"** to begin
-2. Type the displayed text as accurately as possible
-3. Watch real-time stats (WPM, accuracy, timer)
-4. Test completes automatically when you finish typing
-5. Click **"Retry"** to start a new test
+- Click **"Start Test"** to begin
+- Type the text that appears
+- Watch your WPM and accuracy in real-time
+- Click **"Retry"** to start a new test
 
-## Project Files Overview
-
-- **C++ Classes:** `WordGenerator.*`, `TypingSession.*`, `Timer.*`
-- **WASM Bindings:** `bindings.cpp`
-- **React App:** `src/App.jsx`, `src/wasmLoader.js`
-- **Build Config:** `Makefile`, `package.json`, `vite.config.js`
-
-## Troubleshooting
-
-- **"emcc: command not found"** → Activate Emscripten environment
-- **WASM not loading** → Ensure `typing.js` and `typing.wasm` are in project root
-- **Module errors** → Check browser console for detailed error messages
-
+Done! The app should now be running in your browser.
