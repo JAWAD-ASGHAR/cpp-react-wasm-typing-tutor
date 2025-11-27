@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { loadWasm } from './wasmLoader';
-import './App.css';
+import { FiRefreshCw, FiClock, FiTarget, FiTrendingUp } from 'react-icons/fi';
 
 function App() {
   const [wasm, setWasm] = useState(null);
@@ -15,9 +15,9 @@ function App() {
   const [totalChars, setTotalChars] = useState(0);
   const intervalRef = useRef(null);
   const inputRef = useRef(null);
+  const textContainerRef = useRef(null);
 
   useEffect(() => {
-    // Load WASM module on mount
     loadWasm().then((wasmFunctions) => {
       setWasm(wasmFunctions);
     });
@@ -29,8 +29,6 @@ function App() {
         if (wasm) {
           const elapsed = wasm.getElapsedSeconds();
           setTimer(elapsed);
-          
-          // Update WPM
           const currentWpm = wasm.getWPM(elapsed);
           setWpm(currentWpm);
         }
@@ -49,10 +47,23 @@ function App() {
     };
   }, [isTestActive, isTestComplete, wasm]);
 
+  // Auto-scroll to current character
+  useEffect(() => {
+    if (isTestActive && textContainerRef.current) {
+      const currentChar = textContainerRef.current.querySelector('.char.current');
+      if (currentChar) {
+        currentChar.scrollIntoView({
+          behavior: 'smooth',
+          block: 'nearest',
+          inline: 'center'
+        });
+      }
+    }
+  }, [userInput.length, isTestActive]);
+
   const startTest = () => {
     if (!wasm) return;
 
-    // Generate text with 25 words
     const generatedText = wasm.generateText(25);
     setTargetText(generatedText);
     setUserInput('');
@@ -64,10 +75,8 @@ function App() {
     setCorrectChars(0);
     setTotalChars(0);
 
-    // Start session in WASM
     wasm.startSession(generatedText);
 
-    // Focus input field
     setTimeout(() => {
       if (inputRef.current) {
         inputRef.current.focus();
@@ -82,19 +91,21 @@ function App() {
     setUserInput(typed);
     setTotalChars(typed.length);
 
-    // Update WASM session
     if (wasm) {
       wasm.updateInput(typed);
       const acc = wasm.getAccuracy();
       setAccuracy(acc);
-
-      // Calculate correct chars (approximate from accuracy)
       const correct = Math.round((acc / 100) * typed.length);
       setCorrectChars(correct);
     }
 
-    // Check if test is complete
     if (typed.length >= targetText.length) {
+      finishTest();
+    }
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Escape' && isTestActive) {
       finishTest();
     }
   };
@@ -130,16 +141,18 @@ function App() {
     if (!targetText) return null;
 
     return targetText.split('').map((char, index) => {
-      let className = 'char';
+      let className = 'inline transition-all duration-150 ease-in relative';
       
       if (index < userInput.length) {
         if (char === userInput[index]) {
-          className += ' correct';
+          className += ' text-text-primary animate-correct-pulse';
         } else {
-          className += ' incorrect';
+          className += ' text-incorrect bg-[rgba(202,71,84,0.15)] border-b-2 border-incorrect animate-incorrect-shake';
         }
       } else if (index === userInput.length) {
-        className += ' current';
+        className += ' char current bg-[rgba(226,183,20,0.2)] border-l-2 border-accent animate-blink';
+      } else {
+        className += ' text-text-secondary';
       }
 
       return (
@@ -151,96 +164,182 @@ function App() {
   };
 
   return (
-    <div className="App">
-      <div className="container">
-        <h1>Typing Practice</h1>
-        
-        <div className="stats-bar">
-          <div className="stat">
-            <label>Time:</label>
-            <span>{timer.toFixed(1)}s</span>
+    <div className="min-h-screen bg-bg-primary text-text-primary font-mono flex justify-center items-center p-5 transition-colors duration-300">
+      <div className="max-w-[1000px] w-full flex flex-col gap-5 animate-fade-in">
+        {/* Header */}
+        <header className="flex justify-center py-5">
+          <div className="flex flex-col items-center gap-1">
+            <span className="text-2xl md:text-3xl font-bold text-text-primary tracking-tight transition-colors duration-300">
+              typetutor
+            </span>
+            <span className="text-xs text-text-secondary uppercase tracking-widest font-medium">
+              wasm
+            </span>
           </div>
-          <div className="stat">
-            <label>WPM:</label>
-            <span>{wpm}</span>
-          </div>
-          <div className="stat">
-            <label>Accuracy:</label>
-            <span>{accuracy.toFixed(1)}%</span>
-          </div>
-          <div className="stat">
-            <label>Progress:</label>
-            <span>{totalChars}/{targetText.length}</span>
-          </div>
-        </div>
+        </header>
 
-        <div className="text-display">
-          {targetText ? (
-            <div className="text-content">{renderText()}</div>
-          ) : (
-            <div className="placeholder">Click "Start Test" to begin typing practice</div>
-          )}
-        </div>
-
-        <div className="input-section">
-          <input
-            ref={inputRef}
-            type="text"
-            value={userInput}
-            onChange={handleInputChange}
-            placeholder="Start typing here..."
-            disabled={!isTestActive}
-            className="typing-input"
-          />
-        </div>
-
-        <div className="progress-info">
-          <div className="progress-item">
-            <span>Correct: {correctChars}</span>
-          </div>
-          <div className="progress-item">
-            <span>Incorrect: {totalChars - correctChars}</span>
-          </div>
-        </div>
-
-        <div className="controls">
-          {!isTestActive && !isTestComplete && (
-            <button onClick={startTest} className="btn btn-primary">
-              Start Test
-            </button>
-          )}
-          {isTestComplete && (
-            <button onClick={retry} className="btn btn-secondary">
-              Retry
-            </button>
-          )}
-          {isTestActive && (
-            <button onClick={finishTest} className="btn btn-secondary">
-              Finish Test
-            </button>
-          )}
-        </div>
-
-        {isTestComplete && (
-          <div className="results">
-            <h2>Test Complete!</h2>
-            <div className="result-stats">
-              <div className="result-item">
-                <strong>WPM:</strong> {wpm}
-              </div>
-              <div className="result-item">
-                <strong>Accuracy:</strong> {accuracy.toFixed(1)}%
-              </div>
-              <div className="result-item">
-                <strong>Time:</strong> {timer.toFixed(1)}s
-              </div>
+        {/* Main Stats Bar */}
+        {isTestActive && (
+          <div className="flex justify-center gap-5 md:gap-10 py-4 md:py-5 animate-slide-down">
+            <div className="flex items-center gap-2 text-text-secondary text-xs md:text-sm">
+              <FiClock className="w-[18px] h-[18px] text-text-tertiary" />
+              <span className="text-base md:text-xl font-semibold text-text-primary min-w-[40px] md:min-w-[50px]">
+                {timer.toFixed(1)}s
+              </span>
+            </div>
+            <div className="flex items-center gap-2 text-text-secondary text-xs md:text-sm">
+              <FiTrendingUp className="w-[18px] h-[18px] text-text-tertiary" />
+              <span className="text-base md:text-xl font-semibold text-text-primary min-w-[40px] md:min-w-[50px]">
+                {Math.round(wpm)}
+              </span>
+              <span className="text-xs text-text-tertiary uppercase tracking-wide">
+                wpm
+              </span>
+            </div>
+            <div className="flex items-center gap-2 text-text-secondary text-xs md:text-sm">
+              <FiTarget className="w-[18px] h-[18px] text-text-tertiary" />
+              <span className="text-base md:text-xl font-semibold text-text-primary min-w-[40px] md:min-w-[50px]">
+                {accuracy.toFixed(0)}%
+              </span>
+              <span className="text-xs text-text-tertiary uppercase tracking-wide">
+                acc
+              </span>
             </div>
           </div>
         )}
+
+        {/* Language Label */}
+        {targetText && (
+          <div className="text-center text-sm text-text-tertiary uppercase tracking-widest -mb-2.5">
+            english
+          </div>
+        )}
+
+        {/* Text Display Area */}
+        <div 
+          className="bg-bg-secondary rounded-lg px-5 py-8 md:px-8 md:py-10 min-h-[180px] md:min-h-[200px] flex items-center justify-center cursor-text transition-colors duration-300 relative overflow-hidden focus-within:outline focus-within:outline-2 focus-within:outline-accent focus-within:outline-offset-2"
+          onClick={() => {
+            if (isTestActive || targetText) {
+              inputRef.current?.focus();
+            }
+          }}
+        >
+          {targetText ? (
+            <div 
+              ref={textContainerRef}
+              className="text-xl md:text-2xl leading-[1.8] md:leading-[2] break-words whitespace-pre-wrap tracking-wide text-text-secondary select-none w-full text-left overflow-x-hidden transition-all duration-200 scroll-smooth"
+            >
+              {renderText()}
+            </div>
+          ) : (
+            <div className="text-center text-text-tertiary text-lg leading-[1.8]">
+              <p className="my-2">Click the button below to start a typing test</p>
+              <p className="text-sm opacity-70">Press Space or Enter to begin</p>
+            </div>
+          )}
+        </div>
+
+        {/* Hidden Input */}
+        <input
+          ref={inputRef}
+          type="text"
+          value={userInput}
+          onChange={handleInputChange}
+          onKeyDown={handleKeyDown}
+          disabled={!isTestActive}
+          className="absolute opacity-0 pointer-events-none w-0 h-0 border-0 bg-transparent outline-none text-transparent"
+          autoComplete="off"
+          autoCorrect="off"
+          autoCapitalize="off"
+          spellCheck="false"
+        />
+
+        {/* Controls */}
+        <div className="flex justify-center items-center gap-4 py-5">
+          {!isTestActive && !isTestComplete && (
+            <button 
+              onClick={startTest} 
+              className="flex items-center gap-2 px-6 py-3 text-base font-medium rounded-md cursor-pointer transition-all duration-200 font-mono bg-accent text-bg-primary border border-accent font-semibold hover:bg-[#f5c842] hover:-translate-y-0.5 hover:shadow-[0_4px_16px_rgba(226,183,20,0.3)] active:translate-y-0"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  startTest();
+                }
+              }}
+            >
+              <FiRefreshCw className="w-[18px] h-[18px]" />
+              Start Test
+            </button>
+          )}
+          
+          {isTestComplete && (
+            <div className="flex flex-col items-center gap-5 animate-fade-in-up">
+              <div className="flex gap-5 md:gap-10 py-5">
+                <div className="flex flex-col items-center gap-2">
+                  <span className="text-xs text-text-tertiary uppercase tracking-widest">
+                    wpm
+                  </span>
+                  <span className="text-2xl md:text-[2rem] font-bold text-accent">
+                    {Math.round(wpm)}
+                  </span>
+                </div>
+                <div className="flex flex-col items-center gap-2">
+                  <span className="text-xs text-text-tertiary uppercase tracking-widest">
+                    acc
+                  </span>
+                  <span className="text-2xl md:text-[2rem] font-bold text-accent">
+                    {accuracy.toFixed(1)}%
+                  </span>
+                </div>
+                <div className="flex flex-col items-center gap-2">
+                  <span className="text-xs text-text-tertiary uppercase tracking-widest">
+                    time
+                  </span>
+                  <span className="text-2xl md:text-[2rem] font-bold text-accent">
+                    {timer.toFixed(1)}s
+                  </span>
+                </div>
+              </div>
+              <button 
+                onClick={retry} 
+                className="flex items-center gap-2 px-6 py-3 text-base font-medium rounded-md cursor-pointer transition-all duration-200 font-mono bg-transparent text-text-primary border border-text-secondary hover:bg-bg-secondary hover:border-text-primary hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(0,0,0,0.3)] active:translate-y-0"
+              >
+                <FiRefreshCw className="w-[18px] h-[18px]" />
+                Try Again
+              </button>
+            </div>
+          )}
+
+          {isTestActive && (
+            <button 
+              onClick={retry} 
+              className="p-3 w-11 h-11 flex items-center justify-center bg-bg-tertiary border border-text-tertiary text-text-primary rounded-md cursor-pointer transition-all duration-200 hover:bg-bg-secondary hover:border-text-primary hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(0,0,0,0.3)] active:translate-y-0" 
+              title="Restart (Tab + Enter)"
+            >
+              <FiRefreshCw />
+            </button>
+          )}
+        </div>
+
+        {/* Footer Hints */}
+        <footer className="flex justify-center py-5 mt-auto">
+          <div className="text-xs text-text-tertiary flex flex-col md:flex-row gap-2 md:gap-5 text-center">
+            <span>
+              <span className="bg-bg-tertiary px-2 py-1 rounded font-mono mr-2 text-text-secondary border border-text-tertiary">
+                esc
+              </span>
+              - finish test
+            </span>
+            <span>
+              <span className="bg-bg-tertiary px-2 py-1 rounded font-mono mr-2 text-text-secondary border border-text-tertiary">
+                tab + enter
+              </span>
+              - restart
+            </span>
+          </div>
+        </footer>
       </div>
     </div>
   );
 }
 
 export default App;
-
