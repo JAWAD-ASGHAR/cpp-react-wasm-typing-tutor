@@ -140,27 +140,67 @@ function App() {
   const renderText = () => {
     if (!targetText) return null;
 
-    return targetText.split('').map((char, index) => {
-      let className = 'inline transition-all duration-150 ease-in relative';
-      
-      if (index < userInput.length) {
-        if (char === userInput[index]) {
-          className += ' text-text-primary animate-correct-pulse';
-        } else {
-          className += ' text-incorrect bg-[rgba(202,71,84,0.15)] border-b-2 border-incorrect animate-incorrect-shake';
-        }
-      } else if (index === userInput.length) {
-        className += ' char current bg-[rgba(226,183,20,0.2)] border-l-2 border-accent animate-blink';
-      } else {
-        className += ' text-text-secondary';
-      }
+    // Split text into words to preserve word boundaries
+    const words = targetText.split(' ');
+    let charIndex = 0;
 
-      return (
-        <span key={index} className={className}>
-          {char === ' ' ? '\u00A0' : char}
+    return words.map((word, wordIndex) => {
+      const wordChars = word.split('').map((char) => {
+        const index = charIndex++;
+        let className = 'inline transition-all duration-150 ease-in relative';
+        
+        if (index < userInput.length) {
+          if (char === userInput[index]) {
+            className += ' text-text-primary animate-correct-pulse';
+          } else {
+            className += ' text-incorrect bg-[rgba(202,71,84,0.15)] border-b-2 border-incorrect animate-incorrect-shake';
+          }
+        } else if (index === userInput.length) {
+          className += ' char current bg-[rgba(226,183,20,0.2)] border-l-2 border-accent animate-blink';
+        } else {
+          className += ' text-text-secondary';
+        }
+
+        return (
+          <span key={index} className={className}>
+            {char}
+          </span>
+        );
+      });
+
+      const result = [];
+      
+      // Wrap word in a span - this keeps the word together when wrapping
+      result.push(
+        <span key={`word-${wordIndex}`} className="inline-block">
+          {wordChars}
         </span>
       );
-    });
+      
+      // Add space after word (except last word) - spaces allow wrapping to next line
+      if (wordIndex < words.length - 1) {
+        const spaceIndex = charIndex++;
+        let spaceClassName = 'inline transition-all duration-150 ease-in relative';
+        
+        if (spaceIndex < userInput.length) {
+          if (' ' === userInput[spaceIndex]) {
+            spaceClassName += ' text-text-primary animate-correct-pulse';
+          } else {
+            spaceClassName += ' text-incorrect bg-[rgba(202,71,84,0.15)] border-b-2 border-incorrect animate-incorrect-shake';
+          }
+        } else if (spaceIndex === userInput.length) {
+          spaceClassName += ' char current bg-[rgba(226,183,20,0.2)] border-l-2 border-accent animate-blink';
+        } else {
+          spaceClassName += ' text-text-secondary';
+        }
+
+        result.push(
+          <span key={spaceIndex} className={spaceClassName + ' inline-block'}> </span>
+        );
+      }
+
+      return result;
+    }).flat();
   };
 
   return (
@@ -227,7 +267,8 @@ function App() {
           {targetText ? (
             <div 
               ref={textContainerRef}
-              className="text-xl md:text-2xl leading-[1.8] md:leading-[2] break-words whitespace-pre-wrap tracking-wide text-text-secondary select-none w-full text-left overflow-x-hidden transition-all duration-200 scroll-smooth"
+              className="text-xl md:text-2xl leading-[1.8] md:leading-[2] tracking-wide text-text-secondary select-none w-full text-left overflow-x-hidden transition-all duration-200 scroll-smooth whitespace-normal"
+              style={{ wordBreak: 'normal', overflowWrap: 'break-word' }}
             >
               {renderText()}
             </div>
