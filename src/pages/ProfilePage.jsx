@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { supabase, isLeaderboardEnabled } from '../lib/supabase';
-import { FiTrendingUp, FiCalendar, FiBarChart2, FiAward, FiUser, FiEdit2, FiCheck, FiX, FiType } from 'react-icons/fi';
+import { FiTrendingUp, FiCalendar, FiBarChart2, FiAward, FiUser, FiEdit2, FiCheck, FiX } from 'react-icons/fi';
+import { FaRegKeyboard } from 'react-icons/fa6';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 export default function ProfilePage() {
@@ -24,6 +25,11 @@ export default function ProfilePage() {
     const profileUsername = urlUsername ? decodeURIComponent(urlUsername) : savedUsername;
     
     if (profileUsername) {
+      // Reset state when username changes
+      setSessions([]);
+      setLeaderboardPosition(null);
+      setBestScore(null);
+      
       setUsername(profileUsername);
       setEditValue(profileUsername);
       setIsOwnProfile(!urlUsername || profileUsername === savedUsername);
@@ -32,6 +38,24 @@ export default function ProfilePage() {
       setLoading(false);
     }
   }, [urlUsername]);
+
+  // Listen for localStorage changes (when username is updated from another tab/component)
+  useEffect(() => {
+    const handleStorageChange = (e) => {
+      if (e.key === 'typingTutor_username' && e.newValue) {
+        const newUsername = e.newValue;
+        const profileUsername = urlUsername ? decodeURIComponent(urlUsername) : newUsername;
+        if (profileUsername === newUsername && isOwnProfile) {
+          setUsername(newUsername);
+          setEditValue(newUsername);
+          fetchUserData(newUsername);
+        }
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, [urlUsername, isOwnProfile]);
 
   const fetchUserData = async (user) => {
     if (!isLeaderboardEnabled || !user) {
@@ -98,14 +122,19 @@ export default function ProfilePage() {
     }
   };
 
-  const handleSaveUsername = () => {
+  const handleSaveUsername = async () => {
     const trimmed = editValue.trim();
     if (trimmed && trimmed !== username && isOwnProfile) {
       localStorage.setItem('typingTutor_username', trimmed);
       setUsername(trimmed);
+      setEditValue(trimmed);
       setIsEditingUsername(false);
+      
+      // Navigate first, then fetch data
       navigate(`/profile/${encodeURIComponent(trimmed)}`, { replace: true });
-      fetchUserData(trimmed);
+      
+      // Ensure data is reloaded after navigation
+      await fetchUserData(trimmed);
     } else {
       setIsEditingUsername(false);
     }
@@ -384,8 +413,8 @@ export default function ProfilePage() {
             ))}
           </div>
         </div>
-        <div className="w-full" style={{ height: '300px' }}>
-          <ResponsiveContainer width="100%" height="100%">
+        <div className="w-full" style={{ height: '300px', minHeight: '300px' }}>
+          <ResponsiveContainer width="100%" height="100%" minHeight={300}>
             <LineChart data={chartData} margin={{ top: 10, right: 30, left: 20, bottom: 10 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="currentColor" opacity={0.1} />
               <XAxis 
@@ -466,7 +495,7 @@ export default function ProfilePage() {
               to="/"
               className="flex items-center gap-2 px-3 py-2 text-text-secondary hover:text-text-primary transition-colors text-sm"
             >
-              <FiType className="w-4 h-4" />
+              <FaRegKeyboard className="w-4 h-4" />
               <span className="hidden md:inline">Test</span>
             </Link>
           </div>

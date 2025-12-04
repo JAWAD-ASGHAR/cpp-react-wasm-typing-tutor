@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase, isLeaderboardEnabled } from '../lib/supabase';
-import { FiAward, FiType } from 'react-icons/fi';
+import { FiAward } from 'react-icons/fi';
+import { FaRegKeyboard } from 'react-icons/fa6';
+import UsernameButton from '../components/UsernameButton';
 
 export default function LeaderboardPage() {
   const [leaderboard, setLeaderboard] = useState([]);
@@ -63,18 +65,13 @@ export default function LeaderboardPage() {
     }
   };
 
-  const savedUsername = localStorage.getItem('typingTutor_username');
-  const profileUrl = savedUsername ? `/profile/${encodeURIComponent(savedUsername)}` : '/profile';
-
   return (
     <div className="min-h-screen bg-bg-primary text-text-primary font-mono">
       <div className="max-w-6xl mx-auto p-5">
         {/* Header */}
         <header className="flex justify-between items-center py-5 mb-6">
           <div className="flex-1 flex justify-start items-center">
-            <Link to={profileUrl} className="flex items-center gap-2 px-3 py-2 text-text-secondary hover:text-text-primary transition-colors text-sm">
-              <span className="hidden md:inline">Profile</span>
-            </Link>
+            <UsernameButton />
           </div>
           <div className="flex flex-col items-center gap-1">
             <Link to="/" className="flex flex-col items-center gap-1">
@@ -92,7 +89,7 @@ export default function LeaderboardPage() {
               className="flex items-center gap-2 px-4 py-2 text-text-secondary hover:text-text-primary transition-colors"
               title="Back to Test"
             >
-              <FiType className="w-4 h-4" />
+              <FaRegKeyboard className="w-4 h-4" />
               <span className="hidden md:inline text-sm">Test</span>
             </Link>
           </div>

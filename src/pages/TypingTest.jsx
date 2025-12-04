@@ -32,47 +32,63 @@ export default function TypingTest() {
     });
   }, []);
 
-  // Global Enter key handler to start/restart test
+  const restartTest = () => {
+    if (!wasm) return;
+    
+    if (wasm) {
+      wasm.resetSession();
+    }
+    setCurrentBestScore(null);
+    setScoreUpdateStatus(null);
+    setShowNameModal(false);
+    
+    const generatedText = wasm.generateText(25);
+    setTargetText(generatedText);
+    setUserInput('');
+    setIsTestActive(true);
+    setIsTestComplete(false);
+    setHasStartedTyping(false);
+    setTimer(0);
+    setAccuracy(100);
+    setWpm(0);
+    setCorrectChars(0);
+    setTotalChars(0);
+    setTimeout(() => {
+      if (inputRef.current) {
+        inputRef.current.focus();
+      }
+    }, 100);
+  };
+
+  // Global Enter key handler to start/restart test (when not active or after completion)
   useEffect(() => {
     const handleGlobalKeyDown = (e) => {
       if (e.key === 'Enter' && 
           wasm &&
           e.target.tagName !== 'INPUT' && 
           e.target.tagName !== 'TEXTAREA' &&
+          e.target.tagName !== 'BUTTON' &&
+          (!isTestActive || isTestComplete)) {
+        e.preventDefault();
+        restartTest();
+      }
+      
+      // Tab key to restart during active test
+      if (e.key === 'Tab' && 
+          wasm &&
+          isTestActive && 
+          !isTestComplete &&
+          e.target.tagName !== 'INPUT' && 
+          e.target.tagName !== 'TEXTAREA' &&
           e.target.tagName !== 'BUTTON') {
         e.preventDefault();
-        
-        if (wasm) {
-          wasm.resetSession();
-        }
-        setCurrentBestScore(null);
-        setScoreUpdateStatus(null);
-        
-        if (isTestComplete || !isTestActive) {
-          if (!wasm) return;
-          const generatedText = wasm.generateText(25);
-          setTargetText(generatedText);
-          setUserInput('');
-          setIsTestActive(true);
-          setIsTestComplete(false);
-          setHasStartedTyping(false);
-          setTimer(0);
-          setAccuracy(100);
-          setWpm(0);
-          setCorrectChars(0);
-          setTotalChars(0);
-          setTimeout(() => {
-            if (inputRef.current) {
-              inputRef.current.focus();
-            }
-          }, 100);
-        }
+        restartTest();
       }
     };
 
     window.addEventListener('keydown', handleGlobalKeyDown);
     return () => window.removeEventListener('keydown', handleGlobalKeyDown);
-  }, [isTestActive, isTestComplete, wasm]);
+  }, [wasm, isTestActive, isTestComplete]);
 
   useEffect(() => {
     if (isTestActive && hasStartedTyping && !isTestComplete) {
@@ -82,6 +98,11 @@ export default function TypingTest() {
           setTimer(elapsed);
           const currentWpm = wasm.getWPM(elapsed);
           setWpm(currentWpm);
+          
+          // Automatically finish test after 60 seconds
+          if (elapsed >= 60) {
+            finishTest();
+          }
         }
       }, 100);
     } else {
@@ -156,14 +177,17 @@ export default function TypingTest() {
       setCorrectChars(correct);
     }
 
+    // Automatically finish test when all text is typed
     if (typed.length >= targetText.length) {
       finishTest();
     }
   };
 
-  const handleKeyDown = (e) => {
-    if (e.key === 'Escape' && isTestActive) {
-      finishTest();
+  const handleInputKeyDown = (e) => {
+    // Tab key to restart during active test
+    if (e.key === 'Tab' && isTestActive && !isTestComplete && wasm) {
+      e.preventDefault();
+      restartTest();
     }
   };
 
@@ -171,22 +195,31 @@ export default function TypingTest() {
     setIsTestActive(false);
     setIsTestComplete(true);
     
+    // Calculate final values directly from WASM or use current state
+    let finalWpm = 0;
+    let finalAccuracy = 100;
+    let finalTime = 0;
+    
     if (wasm && hasStartedTyping) {
       const elapsed = wasm.getElapsedSeconds();
-      const finalWpm = wasm.getWPM(elapsed);
+      finalWpm = Math.round(wasm.getWPM(elapsed));
+      finalAccuracy = parseFloat(wasm.getAccuracy().toFixed(1));
+      finalTime = parseFloat(elapsed.toFixed(1));
       setWpm(finalWpm);
       setTimer(elapsed);
+      setAccuracy(finalAccuracy);
     } else {
+      // Use current state values if test wasn't started properly
+      finalWpm = Math.round(wpm);
+      finalAccuracy = parseFloat(accuracy.toFixed(1));
+      finalTime = parseFloat(timer.toFixed(1));
       setTimer(0);
       setWpm(0);
       setHasStartedTyping(false);
     }
 
     const savedUsername = localStorage.getItem('typingTutor_username');
-    if (savedUsername && isLeaderboardEnabled) {
-      const finalWpm = Math.round(wpm);
-      const finalAccuracy = parseFloat(accuracy.toFixed(1));
-      const finalTime = parseFloat(timer.toFixed(1));
+    if (savedUsername && isLeaderboardEnabled && hasStartedTyping) {
 
       const { data: existingScores, error: queryError } = await supabase
         .from('leaderboard')
@@ -204,54 +237,45 @@ export default function TypingTest() {
         return newScore.time < existingScore.time;
       };
 
-      if (!queryError && existingScores && existingScores.length > 0) {
-        const bestScore = existingScores.reduce((best, current) => {
-          return isBetterScore(current, best) ? current : best;
-        }, existingScores[0]);
+      // Always save the score to the database
+      const { error: insertError } = await supabase
+        .from('leaderboard')
+        .insert([
+          {
+            username: savedUsername,
+            wpm: finalWpm,
+            accuracy: finalAccuracy,
+            time: finalTime,
+            created_at: new Date().toISOString(),
+          },
+        ]);
 
-        setCurrentBestScore(bestScore.wpm);
+      if (!insertError) {
+        // Determine status by comparing with best score
+        if (!queryError && existingScores && existingScores.length > 0) {
+          const bestScore = existingScores.reduce((best, current) => {
+            return isBetterScore(current, best) ? current : best;
+          }, existingScores[0]);
 
-        const newScore = { wpm: finalWpm, accuracy: finalAccuracy, time: finalTime };
-        
-        if (isBetterScore(newScore, bestScore)) {
-          const { error } = await supabase
-            .from('leaderboard')
-            .insert([
-              {
-                username: savedUsername,
-                wpm: finalWpm,
-                accuracy: finalAccuracy,
-                time: finalTime,
-                created_at: new Date().toISOString(),
-              },
-            ]);
+          setCurrentBestScore(bestScore.wpm);
+
+          const newScore = { wpm: finalWpm, accuracy: finalAccuracy, time: finalTime };
           
-          if (!error) {
+          if (isBetterScore(newScore, bestScore)) {
             setScoreUpdateStatus('improved');
+          } else if (finalWpm < bestScore.wpm || 
+                     (finalWpm === bestScore.wpm && finalAccuracy < bestScore.accuracy) ||
+                     (finalWpm === bestScore.wpm && finalAccuracy === bestScore.accuracy && finalTime > bestScore.time)) {
+            setScoreUpdateStatus('worse');
+          } else {
+            setScoreUpdateStatus('same');
           }
-        } else if (finalWpm < bestScore.wpm || 
-                   (finalWpm === bestScore.wpm && finalAccuracy < bestScore.accuracy) ||
-                   (finalWpm === bestScore.wpm && finalAccuracy === bestScore.accuracy && finalTime > bestScore.time)) {
-          setScoreUpdateStatus('worse');
         } else {
-          setScoreUpdateStatus('same');
-        }
-      } else {
-        const { error } = await supabase
-          .from('leaderboard')
-          .insert([
-            {
-              username: savedUsername,
-              wpm: finalWpm,
-              accuracy: finalAccuracy,
-              time: finalTime,
-              created_at: new Date().toISOString(),
-            },
-          ]);
-        
-        if (!error) {
+          setCurrentBestScore(finalWpm);
           setScoreUpdateStatus('new');
         }
+      } else {
+        console.error('Error saving score:', insertError);
       }
     }
 
@@ -346,41 +370,9 @@ export default function TypingTest() {
     }
   };
 
-  const handleUsernameChange = () => {
-    const savedUsername = localStorage.getItem('typingTutor_username');
-    if (savedUsername && isLeaderboardEnabled) {
-      supabase
-        .from('leaderboard')
-        .select('wpm')
-        .eq('username', savedUsername)
-        .order('wpm', { ascending: false })
-        .limit(1)
-        .then(({ data, error }) => {
-          if (!error && data && data.length > 0) {
-            setCurrentBestScore(data[0].wpm);
-          } else {
-            setCurrentBestScore(null);
-          }
-        });
-    }
-  };
 
   const retry = () => {
-    if (wasm) {
-      wasm.resetSession();
-    }
-    setTargetText('');
-    setUserInput('');
-    setIsTestActive(false);
-    setIsTestComplete(false);
-    setHasStartedTyping(false);
-    setTimer(0);
-    setAccuracy(100);
-    setWpm(0);
-    setCorrectChars(0);
-    setTotalChars(0);
-    setCurrentBestScore(null);
-    setScoreUpdateStatus(null);
+    restartTest();
   };
 
   const renderText = () => {
@@ -449,20 +441,13 @@ export default function TypingTest() {
     }).flat();
   };
 
-  const savedUsername = localStorage.getItem('typingTutor_username');
-  const profileUrl = savedUsername ? `/profile/${encodeURIComponent(savedUsername)}` : '/profile';
-
   return (
     <div className="min-h-screen bg-bg-primary text-text-primary font-mono flex justify-center items-center p-5 transition-colors duration-300">
       <div className="max-w-[1000px] w-full flex flex-col gap-5 animate-fade-in">
         {/* Header */}
         <header className="flex justify-between items-center py-5">
           <div className="flex-1 flex justify-start items-center">
-            <Link to={profileUrl} className="flex items-center">
-              <UsernameButton 
-                onUsernameChange={handleUsernameChange}
-              />
-            </Link>
+            <UsernameButton />
           </div>
           <div className="flex flex-col items-center gap-1">
             <Link to="/" className="flex flex-col items-center gap-1">
@@ -551,7 +536,7 @@ export default function TypingTest() {
           type="text"
           value={userInput}
           onChange={handleInputChange}
-          onKeyDown={handleKeyDown}
+          onKeyDown={handleInputKeyDown}
           disabled={!isTestActive}
           className="absolute opacity-0 pointer-events-none w-0 h-0 border-0 bg-transparent outline-none text-transparent"
           autoComplete="off"
@@ -619,7 +604,7 @@ export default function TypingTest() {
             <button 
               onClick={retry} 
               className="p-3 w-11 h-11 flex items-center justify-center bg-bg-tertiary border border-text-tertiary text-text-primary rounded-md cursor-pointer transition-all duration-200 hover:bg-bg-secondary hover:border-text-primary hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(0,0,0,0.3)] active:translate-y-0" 
-              title="Restart (Tab + Enter)"
+              title="Restart (Tab)"
             >
               <FiRefreshCw />
             </button>
@@ -638,20 +623,12 @@ export default function TypingTest() {
               </span>
             )}
             {isTestActive && !isTestComplete && (
-              <>
-                <span>
-                  <span className="bg-bg-tertiary px-2 py-1 rounded font-mono mr-2 text-text-secondary border border-text-tertiary">
-                    esc
-                  </span>
-                  - finish test
+              <span>
+                <span className="bg-bg-tertiary px-2 py-1 rounded font-mono mr-2 text-text-secondary border border-text-tertiary">
+                  tab
                 </span>
-                <span>
-                  <span className="bg-bg-tertiary px-2 py-1 rounded font-mono mr-2 text-text-secondary border border-text-tertiary">
-                    tab + enter
-                  </span>
-                  - restart
-                </span>
-              </>
+                - restart
+              </span>
             )}
             {isTestComplete && (
               <span>
