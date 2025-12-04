@@ -1,6 +1,23 @@
-#include "TypingSession.h"
+#include <string>
 #include <algorithm>
 #include <cmath>
+using namespace std;
+
+class TypingSession {
+private:
+    string targetText;
+    string userInput;
+    int correctChars;
+    int totalChars;
+
+public:
+    TypingSession();
+    void startSession(string generatedText);
+    void updateInput(string typed);
+    double accuracy();
+    int wpm(double secondsElapsed);
+    void reset();
+};
 
 TypingSession::TypingSession() {
     targetText = "";
@@ -9,19 +26,19 @@ TypingSession::TypingSession() {
     totalChars = 0;
 }
 
-void TypingSession::startSession(std::string generatedText) {
+void TypingSession::startSession(string generatedText) {
     targetText = generatedText;
     userInput = "";
     correctChars = 0;
     totalChars = 0;
 }
 
-void TypingSession::updateInput(std::string typed) {
+void TypingSession::updateInput(string typed) {
     userInput = typed;
     totalChars = typed.length();
     correctChars = 0;
 
-    int minLength = std::min(targetText.length(), typed.length());
+    int minLength = min(targetText.length(), typed.length());
     for (int i = 0; i < minLength; i++) {
         if (targetText[i] == typed[i]) {
             correctChars++;
@@ -40,10 +57,10 @@ int TypingSession::wpm(double secondsElapsed) {
     if (secondsElapsed <= 0) {
         return 0;
     }
-    // WPM = (correct characters / 5) / (time in minutes)
+    double wordSize = 5.0;
     double minutes = secondsElapsed / 60.0;
-    double wpmValue = (static_cast<double>(correctChars) / 5.0) / minutes;
-    return static_cast<int>(std::round(wpmValue));
+    double wpmValue = (static_cast<double>(correctChars) / wordSize) / minutes;
+    return static_cast<int>(round(wpmValue));
 }
 
 void TypingSession::reset() {

@@ -1,9 +1,13 @@
 #include <emscripten.h>
 #include <string>
 #include <cstring>
-#include "WordGenerator.h"
-#include "TypingSession.h"
-#include "Timer.h"
+#include <cstdlib>
+using namespace std;
+
+// Include class definitions from their .cpp files
+#include "WordGenerator.cpp"
+#include "TypingSession.cpp"
+#include "Timer.cpp"
 
 // Global instances
 WordGenerator* wordGen = nullptr;
@@ -16,7 +20,7 @@ extern "C" {
         if (!wordGen) {
             wordGen = new WordGenerator();
         }
-        std::string text = wordGen->generateText(wordCount);
+        string text = wordGen->generateText(wordCount);
         char* result = (char*)malloc(text.length() + 1);
         strcpy(result, text.c_str());
         return result;
@@ -30,14 +34,14 @@ extern "C" {
         if (!timer) {
             timer = new Timer();
         }
-        session->startSession(std::string(text));
+        session->startSession(string(text));
         timer->start();
     }
 
     EMSCRIPTEN_KEEPALIVE
     void updateInput(char* userTyped) {
         if (session) {
-            session->updateInput(std::string(userTyped));
+            session->updateInput(string(userTyped));
         }
     }
 

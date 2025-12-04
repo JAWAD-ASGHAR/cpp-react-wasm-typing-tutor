@@ -8,7 +8,8 @@ CPP_DIR = ../cpp
 OUTPUT_DIR = ../public
 
 # Source files (relative to cpp directory)
-CPP_SOURCES = $(CPP_DIR)/bindings.cpp $(CPP_DIR)/WordGenerator.cpp $(CPP_DIR)/TypingSession.cpp $(CPP_DIR)/Timer.cpp
+# Only bindings.cpp is needed since it includes the other .cpp files
+CPP_SOURCES = $(CPP_DIR)/bindings.cpp
 
 # Output files (in public directory - where Vite serves them from)
 OUTPUT_JS = $(OUTPUT_DIR)/typing.js
