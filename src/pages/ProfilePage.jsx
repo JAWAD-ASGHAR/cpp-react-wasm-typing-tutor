@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { supabase, isLeaderboardEnabled } from '../lib/supabase';
 import { FiTrendingUp, FiCalendar, FiBarChart2, FiAward, FiUser, FiEdit2, FiCheck, FiX, FiType } from 'react-icons/fi';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 export default function ProfilePage() {
   const { username: urlUsername } = useParams();
@@ -144,7 +145,7 @@ export default function ProfilePage() {
 
   const getGraphData = () => {
     const filtered = getFilteredSessions();
-    if (!filtered.length) return { labels: [], wpm: [], accuracy: [] };
+    if (!filtered.length) return [];
 
     const now = new Date();
     let days = 7;
@@ -168,29 +169,40 @@ export default function ProfilePage() {
       }
     });
 
-    const labels = [];
-    const wpmData = [];
-    const accuracyData = [];
+    const chartData = [];
 
     for (let i = days - 1; i >= 0; i--) {
       const date = new Date(now);
       date.setDate(date.getDate() - i);
       const dateKey = date.toISOString().split('T')[0];
       
-      labels.push(dateKey);
+      let wpm = 0;
+      let accuracy = 0;
       
       if (dataByDate[dateKey]) {
-        const avgWpm = dataByDate[dateKey].wpm.reduce((a, b) => a + b, 0) / dataByDate[dateKey].wpm.length;
-        const avgAcc = dataByDate[dateKey].accuracy.reduce((a, b) => a + b, 0) / dataByDate[dateKey].accuracy.length;
-        wpmData.push(Math.round(avgWpm));
-        accuracyData.push(parseFloat(avgAcc.toFixed(1)));
-      } else {
-        wpmData.push(0);
-        accuracyData.push(0);
+        wpm = Math.round(dataByDate[dateKey].wpm.reduce((a, b) => a + b, 0) / dataByDate[dateKey].wpm.length);
+        accuracy = parseFloat((dataByDate[dateKey].accuracy.reduce((a, b) => a + b, 0) / dataByDate[dateKey].accuracy.length).toFixed(1));
       }
+      
+      // Format date label based on period
+      let label = dateKey;
+      if (graphPeriod === 'day') {
+        label = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+      } else if (graphPeriod === 'week') {
+        label = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      } else {
+        label = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      }
+      
+      chartData.push({
+        date: label,
+        dateKey: dateKey,
+        wpm: wpm,
+        accuracy: accuracy
+      });
     }
 
-    return { labels, wpm: wpmData, accuracy: accuracyData };
+    return chartData;
   };
 
   const getContributionData = () => {
@@ -299,28 +311,55 @@ export default function ProfilePage() {
   };
 
   const renderGraph = () => {
-    const { labels, wpm, accuracy } = getGraphData();
-    if (!labels.length) return null;
+    const chartData = getGraphData();
+    if (!chartData.length) {
+      return (
+        <div className="bg-bg-secondary rounded-lg p-6 border border-text-tertiary">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-text-primary flex items-center gap-2">
+              <FiTrendingUp className="text-accent" />
+              Progress Over Time
+            </h3>
+            <div className="flex gap-2">
+              {['day', 'week', 'month'].map(period => (
+                <button
+                  key={period}
+                  onClick={() => setGraphPeriod(period)}
+                  className={`px-3 py-1 text-xs rounded transition-colors ${
+                    graphPeriod === period
+                      ? 'bg-accent text-bg-primary'
+                      : 'bg-bg-tertiary text-text-secondary hover:text-text-primary'
+                  }`}
+                >
+                  {period.charAt(0).toUpperCase() + period.slice(1)}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="text-center text-text-tertiary py-12">
+            No data available for this period
+          </div>
+        </div>
+      );
+    }
 
-    const maxWpm = Math.max(...wpm, 1);
-    const maxAccuracy = Math.max(...accuracy, 1);
-    const width = 600;
-    const height = 200;
-    const padding = 40;
-    const graphWidth = width - padding * 2;
-    const graphHeight = height - padding * 2;
-
-    const pointsWpm = wpm.map((value, i) => {
-      const x = padding + (i / Math.max(labels.length - 1, 1)) * graphWidth;
-      const y = padding + graphHeight - (value / Math.max(maxWpm, 1)) * graphHeight;
-      return `${x},${y}`;
-    }).join(' ');
-
-    const pointsAccuracy = accuracy.map((value, i) => {
-      const x = padding + (i / Math.max(labels.length - 1, 1)) * graphWidth;
-      const y = padding + graphHeight - (value / Math.max(maxAccuracy, 1)) * graphHeight;
-      return `${x},${y}`;
-    }).join(' ');
+    // Custom tooltip
+    const CustomTooltip = ({ active, payload }) => {
+      if (active && payload && payload.length && payload[0]?.payload) {
+        const data = payload[0].payload;
+        return (
+          <div className="bg-bg-tertiary border border-text-tertiary rounded-lg p-3 shadow-lg">
+            <p className="text-text-secondary text-xs mb-2">{data.dateKey || data.date}</p>
+            {payload.map((entry, index) => (
+              <p key={index} className="text-sm" style={{ color: entry.color }}>
+                {entry.name}: {entry.value !== undefined ? entry.value : 'N/A'}
+              </p>
+            ))}
+          </div>
+        );
+      }
+      return null;
+    };
 
     return (
       <div className="bg-bg-secondary rounded-lg p-6 border border-text-tertiary">
@@ -345,55 +384,68 @@ export default function ProfilePage() {
             ))}
           </div>
         </div>
-        <div className="overflow-x-auto">
-          <svg width={width} height={height} className="min-w-full">
-            {[0, 0.25, 0.5, 0.75, 1].map((ratio, i) => (
-              <g key={i}>
-                <line
-                  x1={padding}
-                  y1={padding + ratio * graphHeight}
-                  x2={width - padding}
-                  y2={padding + ratio * graphHeight}
-                  stroke="currentColor"
-                  strokeWidth="0.5"
-                  opacity="0.1"
-                />
-                <text
-                  x={padding - 10}
-                  y={padding + ratio * graphHeight + 4}
-                  fill="currentColor"
-                  fontSize="10"
-                  opacity="0.5"
-                  textAnchor="end"
-                >
-                  {Math.round(maxWpm * (1 - ratio))}
-                </text>
-              </g>
-            ))}
-            <polyline
-              points={pointsWpm}
-              fill="none"
-              stroke="#e2b714"
-              strokeWidth="2"
-            />
-            <polyline
-              points={pointsAccuracy}
-              fill="none"
-              stroke="#4a9eff"
-              strokeWidth="2"
-              opacity="0.7"
-            />
-          </svg>
-        </div>
-        <div className="flex gap-4 mt-4 text-xs text-text-tertiary">
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 bg-accent rounded"></div>
-            <span>WPM</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 bg-blue-500 rounded opacity-70"></div>
-            <span>Accuracy %</span>
-          </div>
+        <div className="w-full" style={{ height: '300px' }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={chartData} margin={{ top: 10, right: 30, left: 20, bottom: 10 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="currentColor" opacity={0.1} />
+              <XAxis 
+                dataKey="date" 
+                stroke="currentColor"
+                style={{ fill: 'currentColor', opacity: 0.5, fontSize: '11px' }}
+                tick={{ fill: 'currentColor', opacity: 0.5 }}
+                angle={-45}
+                textAnchor="end"
+                height={60}
+              />
+              <YAxis 
+                yAxisId="wpm"
+                stroke="currentColor"
+                style={{ fill: 'currentColor', opacity: 0.5, fontSize: '11px' }}
+                tick={{ fill: 'currentColor', opacity: 0.5 }}
+                width={50}
+                label={{ value: 'WPM', angle: -90, position: 'insideLeft', style: { fill: '#e2b714', opacity: 0.8, fontSize: '11px' } }}
+              />
+              <YAxis 
+                yAxisId="accuracy"
+                orientation="right"
+                stroke="currentColor"
+                style={{ fill: 'currentColor', opacity: 0.5, fontSize: '11px' }}
+                tick={{ fill: 'currentColor', opacity: 0.5 }}
+                domain={[0, 100]}
+                width={50}
+                label={{ value: 'Accuracy %', angle: 90, position: 'insideRight', style: { fill: '#4a9eff', opacity: 0.8, fontSize: '11px' } }}
+              />
+              <Tooltip content={<CustomTooltip />} />
+              <Legend 
+                wrapperStyle={{ paddingTop: '20px' }}
+                iconType="line"
+                formatter={(value) => (
+                  <span className="text-text-tertiary text-xs">{value}</span>
+                )}
+              />
+              <Line 
+                yAxisId="wpm"
+                type="monotone" 
+                dataKey="wpm" 
+                stroke="#e2b714" 
+                strokeWidth={2}
+                dot={{ fill: '#e2b714', r: 3 }}
+                activeDot={{ r: 5 }}
+                name="WPM"
+              />
+              <Line 
+                yAxisId="accuracy"
+                type="monotone" 
+                dataKey="accuracy" 
+                stroke="#4a9eff" 
+                strokeWidth={2}
+                strokeOpacity={0.8}
+                dot={{ fill: '#4a9eff', r: 3 }}
+                activeDot={{ r: 5 }}
+                name="Accuracy %"
+              />
+            </LineChart>
+          </ResponsiveContainer>
         </div>
       </div>
     );
