@@ -98,13 +98,13 @@ Quick version:
 To enable the leaderboard feature:
 
 1. Create a Supabase account and project at [supabase.com](https://supabase.com)
-2. Follow the setup instructions in [SUPABASE_SETUP.md](SUPABASE_SETUP.md)
+2. Get your project URL and anon key from the Supabase dashboard
 3. Create a `.env` file in the project root:
    ```env
    VITE_SUPABASE_URL=your-supabase-url
    VITE_SUPABASE_ANON_KEY=your-anon-key
    ```
-4. Run the SQL schema from `supabase-schema.sql` in your Supabase SQL Editor
+4. Run the SQL schema from `supabase-schema.sql` in your Supabase SQL Editor (go to SQL Editor → New Query → paste the SQL → Run)
 
 The leaderboard will automatically appear once configured!
 
