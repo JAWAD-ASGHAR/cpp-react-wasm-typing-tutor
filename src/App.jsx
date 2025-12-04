@@ -1,6 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { loadWasm } from './wasmLoader';
-import { FiRefreshCw, FiClock, FiTarget, FiTrendingUp } from 'react-icons/fi';
+import { FiRefreshCw, FiClock, FiTarget, FiTrendingUp, FiAward } from 'react-icons/fi';
+import Leaderboard from './components/Leaderboard';
+import NameInputModal from './components/NameInputModal';
+import UsernameButton from './components/UsernameButton';
+import { supabase, isLeaderboardEnabled } from './lib/supabase';
 
 function App() {
   const [wasm, setWasm] = useState(null);
@@ -8,11 +12,16 @@ function App() {
   const [userInput, setUserInput] = useState('');
   const [isTestActive, setIsTestActive] = useState(false);
   const [isTestComplete, setIsTestComplete] = useState(false);
+  const [hasStartedTyping, setHasStartedTyping] = useState(false);
   const [timer, setTimer] = useState(0);
   const [accuracy, setAccuracy] = useState(100);
   const [wpm, setWpm] = useState(0);
   const [correctChars, setCorrectChars] = useState(0);
   const [totalChars, setTotalChars] = useState(0);
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const [showNameModal, setShowNameModal] = useState(false);
+  const [currentBestScore, setCurrentBestScore] = useState(null);
+  const [scoreUpdateStatus, setScoreUpdateStatus] = useState(null); // 'new', 'improved', 'worse', null
   const intervalRef = useRef(null);
   const inputRef = useRef(null);
   const textContainerRef = useRef(null);
@@ -23,8 +32,54 @@ function App() {
     });
   }, []);
 
+  // Global Enter key handler to start/restart test
   useEffect(() => {
-    if (isTestActive && !isTestComplete) {
+    const handleGlobalKeyDown = (e) => {
+      // Only handle Enter if not in an input/textarea/button
+      if (e.key === 'Enter' && 
+          wasm &&
+          e.target.tagName !== 'INPUT' && 
+          e.target.tagName !== 'TEXTAREA' &&
+          e.target.tagName !== 'BUTTON') {
+        e.preventDefault();
+        
+        // Reset state first
+        if (wasm) {
+          wasm.resetSession();
+        }
+        setCurrentBestScore(null);
+        setScoreUpdateStatus(null);
+        
+        // If test is complete or not active, start new test
+        if (isTestComplete || !isTestActive) {
+          if (!wasm) return;
+          const generatedText = wasm.generateText(25);
+          setTargetText(generatedText);
+          setUserInput('');
+          setIsTestActive(true);
+          setIsTestComplete(false);
+          setHasStartedTyping(false);
+          setTimer(0);
+          setAccuracy(100);
+          setWpm(0);
+          setCorrectChars(0);
+          setTotalChars(0);
+          setTimeout(() => {
+            if (inputRef.current) {
+              inputRef.current.focus();
+            }
+          }, 100);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [isTestActive, isTestComplete, wasm]);
+
+  useEffect(() => {
+    // Only start timer when user has actually started typing
+    if (isTestActive && hasStartedTyping && !isTestComplete) {
       intervalRef.current = setInterval(() => {
         if (wasm) {
           const elapsed = wasm.getElapsedSeconds();
@@ -45,7 +100,7 @@ function App() {
         clearInterval(intervalRef.current);
       }
     };
-  }, [isTestActive, isTestComplete, wasm]);
+  }, [isTestActive, hasStartedTyping, isTestComplete, wasm]);
 
   // Auto-scroll to current character
   useEffect(() => {
@@ -69,13 +124,14 @@ function App() {
     setUserInput('');
     setIsTestActive(true);
     setIsTestComplete(false);
+    setHasStartedTyping(false); // Timer starts only when first character is typed
     setTimer(0);
     setAccuracy(100);
     setWpm(0);
     setCorrectChars(0);
     setTotalChars(0);
 
-    wasm.startSession(generatedText);
+    // Don't start WASM session yet - wait for first character
 
     setTimeout(() => {
       if (inputRef.current) {
@@ -88,10 +144,19 @@ function App() {
     if (!isTestActive || isTestComplete) return;
 
     const typed = e.target.value;
+    
+    // Start timer and WASM session on first character typed
+    if (!hasStartedTyping && typed.length > 0) {
+      setHasStartedTyping(true);
+      if (wasm && targetText) {
+        wasm.startSession(targetText);
+      }
+    }
+
     setUserInput(typed);
     setTotalChars(typed.length);
 
-    if (wasm) {
+    if (wasm && hasStartedTyping) {
       wasm.updateInput(typed);
       const acc = wasm.getAccuracy();
       setAccuracy(acc);
@@ -110,15 +175,245 @@ function App() {
     }
   };
 
-  const finishTest = () => {
+  const finishTest = async () => {
     setIsTestActive(false);
     setIsTestComplete(true);
     
-    if (wasm) {
+    // Only calculate final stats if user actually started typing
+    if (wasm && hasStartedTyping) {
       const elapsed = wasm.getElapsedSeconds();
       const finalWpm = wasm.getWPM(elapsed);
       setWpm(finalWpm);
       setTimer(elapsed);
+    } else {
+      // If test was finished without typing, reset everything
+      setTimer(0);
+      setWpm(0);
+      setHasStartedTyping(false);
+    }
+
+    const savedUsername = localStorage.getItem('typingTutor_username');
+    
+    if (savedUsername && isLeaderboardEnabled) {
+      // Auto-save if username exists
+      try {
+        const finalWpm = Math.round(wpm);
+        const finalAccuracy = parseFloat(accuracy.toFixed(1));
+        const finalTime = parseFloat(timer.toFixed(1));
+
+        // Fetch their current best score (considering WPM, accuracy, and time)
+        const { data: existingScores, error: queryError } = await supabase
+          .from('leaderboard')
+          .select('wpm, accuracy, time')
+          .eq('username', savedUsername)
+          .order('wpm', { ascending: false })
+          .order('accuracy', { ascending: false })
+          .order('time', { ascending: true });
+
+        // Helper function to compare scores: WPM > Accuracy > Time
+        const isBetterScore = (newScore, existingScore) => {
+          // Primary: WPM (higher is better)
+          if (newScore.wpm > existingScore.wpm) return true;
+          if (newScore.wpm < existingScore.wpm) return false;
+          
+          // Secondary: Accuracy (higher is better)
+          if (newScore.accuracy > existingScore.accuracy) return true;
+          if (newScore.accuracy < existingScore.accuracy) return false;
+          
+          // Tertiary: Time (lower is better)
+          return newScore.time < existingScore.time;
+        };
+
+        if (!queryError && existingScores && existingScores.length > 0) {
+          // Find the actual best score considering all factors
+          const bestScore = existingScores.reduce((best, current) => {
+            return isBetterScore(current, best) ? current : best;
+          }, existingScores[0]);
+
+          setCurrentBestScore(bestScore.wpm);
+
+          const newScore = { wpm: finalWpm, accuracy: finalAccuracy, time: finalTime };
+          
+          if (isBetterScore(newScore, bestScore)) {
+            // New personal best - auto-save
+            const { error } = await supabase
+              .from('leaderboard')
+              .insert([
+                {
+                  username: savedUsername,
+                  wpm: finalWpm,
+                  accuracy: finalAccuracy,
+                  time: finalTime,
+                  created_at: new Date().toISOString(),
+                },
+              ]);
+            
+            if (!error) {
+              setScoreUpdateStatus('improved');
+            }
+          } else if (finalWpm < bestScore.wpm || 
+                     (finalWpm === bestScore.wpm && finalAccuracy < bestScore.accuracy) ||
+                     (finalWpm === bestScore.wpm && finalAccuracy === bestScore.accuracy && finalTime > bestScore.time)) {
+            // Worse than best - show feedback
+            setScoreUpdateStatus('worse');
+          } else {
+            // Same score (all factors equal)
+            setScoreUpdateStatus('same');
+          }
+        } else {
+          // First score for this user - auto-save
+          const { error } = await supabase
+            .from('leaderboard')
+            .insert([
+              {
+                username: savedUsername,
+                wpm: finalWpm,
+                accuracy: finalAccuracy,
+                time: finalTime,
+                created_at: new Date().toISOString(),
+              },
+            ]);
+          
+          if (!error) {
+            setScoreUpdateStatus('new');
+            setCurrentBestScore(finalWpm);
+          }
+        }
+      } catch (error) {
+        console.error('Error auto-saving score:', error);
+        setScoreUpdateStatus(null);
+      }
+    } else if (!savedUsername) {
+      // No username - will show modal to set it
+      setCurrentBestScore(null);
+      setScoreUpdateStatus(null);
+    } else {
+      setCurrentBestScore(null);
+      setScoreUpdateStatus(null);
+    }
+
+    // Always show modal after test (with or without username)
+    setTimeout(() => {
+      setShowNameModal(true);
+    }, 500);
+  };
+
+  const handleSubmitScore = async (username) => {
+    if (!isLeaderboardEnabled) {
+      console.warn('Leaderboard is not configured. Score not saved.');
+      setShowNameModal(false);
+      return;
+    }
+
+    try {
+      const finalWpm = Math.round(wpm);
+      const finalAccuracy = parseFloat(accuracy.toFixed(1));
+      const finalTime = parseFloat(timer.toFixed(1));
+
+      // Save username to localStorage
+      localStorage.setItem('typingTutor_username', username);
+
+      // Helper function to compare scores: WPM > Accuracy > Time
+      const isBetterScore = (newScore, existingScore) => {
+        // Primary: WPM (higher is better)
+        if (newScore.wpm > existingScore.wpm) return true;
+        if (newScore.wpm < existingScore.wpm) return false;
+        
+        // Secondary: Accuracy (higher is better)
+        if (newScore.accuracy > existingScore.accuracy) return true;
+        if (newScore.accuracy < existingScore.accuracy) return false;
+        
+        // Tertiary: Time (lower is better)
+        return newScore.time < existingScore.time;
+      };
+
+      // Check if user already has a score
+      const { data: existingScores, error: queryError } = await supabase
+        .from('leaderboard')
+        .select('wpm, accuracy, time')
+        .eq('username', username)
+        .order('wpm', { ascending: false })
+        .order('accuracy', { ascending: false })
+        .order('time', { ascending: true });
+
+      if (queryError) throw queryError;
+
+      const newScore = { wpm: finalWpm, accuracy: finalAccuracy, time: finalTime };
+
+      if (existingScores && existingScores.length > 0) {
+        // Find the actual best score considering all factors
+        const bestScore = existingScores.reduce((best, current) => {
+          return isBetterScore(current, best) ? current : best;
+        }, existingScores[0]);
+
+        setCurrentBestScore(bestScore.wpm);
+
+        // Only insert if this is a better score
+        if (isBetterScore(newScore, bestScore)) {
+          const { error } = await supabase
+            .from('leaderboard')
+            .insert([
+              {
+                username: username,
+                wpm: finalWpm,
+                accuracy: finalAccuracy,
+                time: finalTime,
+                created_at: new Date().toISOString(),
+              },
+            ]);
+
+          if (error) throw error;
+          setScoreUpdateStatus('improved');
+        } else if (finalWpm < bestScore.wpm || 
+                   (finalWpm === bestScore.wpm && finalAccuracy < bestScore.accuracy) ||
+                   (finalWpm === bestScore.wpm && finalAccuracy === bestScore.accuracy && finalTime > bestScore.time)) {
+          setScoreUpdateStatus('worse');
+        } else {
+          setScoreUpdateStatus('same');
+        }
+      } else {
+        // First score for this user
+        const { error } = await supabase
+          .from('leaderboard')
+          .insert([
+            {
+              username: username,
+              wpm: finalWpm,
+              accuracy: finalAccuracy,
+              time: finalTime,
+              created_at: new Date().toISOString(),
+            },
+          ]);
+
+        if (error) throw error;
+        setCurrentBestScore(finalWpm);
+        setScoreUpdateStatus('new');
+      }
+    } catch (error) {
+      console.error('Error submitting score:', error);
+      alert(`Failed to submit score: ${error.message || 'Please check your Supabase configuration.'}`);
+    } finally {
+      setShowNameModal(false);
+    }
+  };
+
+  const handleUsernameChange = () => {
+    // Refresh best score when username changes
+    const savedUsername = localStorage.getItem('typingTutor_username');
+    if (savedUsername && isLeaderboardEnabled) {
+      supabase
+        .from('leaderboard')
+        .select('wpm')
+        .eq('username', savedUsername)
+        .order('wpm', { ascending: false })
+        .limit(1)
+        .then(({ data, error }) => {
+          if (!error && data && data.length > 0) {
+            setCurrentBestScore(data[0].wpm);
+          } else {
+            setCurrentBestScore(null);
+          }
+        });
     }
   };
 
@@ -130,11 +425,14 @@ function App() {
     setUserInput('');
     setIsTestActive(false);
     setIsTestComplete(false);
+    setHasStartedTyping(false);
     setTimer(0);
     setAccuracy(100);
     setWpm(0);
     setCorrectChars(0);
     setTotalChars(0);
+    setCurrentBestScore(null);
+    setScoreUpdateStatus(null);
   };
 
   const renderText = () => {
@@ -207,7 +505,10 @@ function App() {
     <div className="min-h-screen bg-bg-primary text-text-primary font-mono flex justify-center items-center p-5 transition-colors duration-300">
       <div className="max-w-[1000px] w-full flex flex-col gap-5 animate-fade-in">
         {/* Header */}
-        <header className="flex justify-center py-5">
+        <header className="flex justify-between items-center py-5">
+          <div className="flex-1 flex justify-start items-center">
+            <UsernameButton onUsernameChange={handleUsernameChange} />
+          </div>
           <div className="flex flex-col items-center gap-1">
             <span className="text-2xl md:text-3xl font-bold text-text-primary tracking-tight transition-colors duration-300">
               typetutor
@@ -216,10 +517,20 @@ function App() {
               wasm
             </span>
           </div>
+          <div className="flex-1 flex justify-end items-center">
+            <button
+              onClick={() => setShowLeaderboard(true)}
+              className="flex items-center gap-2 px-4 py-2 text-text-secondary hover:text-text-primary transition-colors"
+              title="View Leaderboard"
+            >
+              <FiAward className="w-5 h-5" />
+              <span className="hidden md:inline text-sm">Leaderboard</span>
+            </button>
+          </div>
         </header>
 
-        {/* Main Stats Bar */}
-        {isTestActive && (
+        {/* Main Stats Bar - Only show when typing has started */}
+        {isTestActive && hasStartedTyping && (
           <div className="flex justify-center gap-5 md:gap-10 py-4 md:py-5 animate-slide-down">
             <div className="flex items-center gap-2 text-text-secondary text-xs md:text-sm">
               <FiClock className="w-[18px] h-[18px] text-text-tertiary" />
@@ -300,7 +611,7 @@ function App() {
           {!isTestActive && !isTestComplete && (
             <button 
               onClick={startTest} 
-              className="flex items-center gap-2 px-6 py-3 text-base font-medium rounded-md cursor-pointer transition-all duration-200 font-mono bg-accent text-bg-primary border border-accent font-semibold hover:bg-[#f5c842] hover:-translate-y-0.5 hover:shadow-[0_4px_16px_rgba(226,183,20,0.3)] active:translate-y-0"
+              className="flex items-center gap-2 px-6 py-3 text-base rounded-md cursor-pointer transition-all duration-200 font-mono bg-accent text-bg-primary border border-accent font-semibold hover:bg-[#f5c842] hover:-translate-y-0.5 hover:shadow-[0_4px_16px_rgba(226,183,20,0.3)] active:translate-y-0"
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                   startTest();
@@ -364,21 +675,59 @@ function App() {
         {/* Footer Hints */}
         <footer className="flex justify-center py-5 mt-auto">
           <div className="text-xs text-text-tertiary flex flex-col md:flex-row gap-2 md:gap-5 text-center">
-            <span>
-              <span className="bg-bg-tertiary px-2 py-1 rounded font-mono mr-2 text-text-secondary border border-text-tertiary">
-                esc
+            {!isTestActive && !isTestComplete && (
+              <span>
+                <span className="bg-bg-tertiary px-2 py-1 rounded font-mono mr-2 text-text-secondary border border-text-tertiary">
+                  enter
+                </span>
+                - start test
               </span>
-              - finish test
-            </span>
-            <span>
-              <span className="bg-bg-tertiary px-2 py-1 rounded font-mono mr-2 text-text-secondary border border-text-tertiary">
-                tab + enter
+            )}
+            {isTestActive && !isTestComplete && (
+              <>
+                <span>
+                  <span className="bg-bg-tertiary px-2 py-1 rounded font-mono mr-2 text-text-secondary border border-text-tertiary">
+                    esc
+                  </span>
+                  - finish test
+                </span>
+                <span>
+                  <span className="bg-bg-tertiary px-2 py-1 rounded font-mono mr-2 text-text-secondary border border-text-tertiary">
+                    tab + enter
+                  </span>
+                  - restart
+                </span>
+              </>
+            )}
+            {isTestComplete && (
+              <span>
+                <span className="bg-bg-tertiary px-2 py-1 rounded font-mono mr-2 text-text-secondary border border-text-tertiary">
+                  enter
+                </span>
+                - try again
               </span>
-              - restart
-            </span>
+            )}
           </div>
         </footer>
       </div>
+
+      {/* Leaderboard Modal */}
+      <Leaderboard
+        isOpen={showLeaderboard}
+        onClose={() => setShowLeaderboard(false)}
+      />
+
+      {/* Results Modal - Always shown after test, with or without username */}
+      <NameInputModal
+        isOpen={showNameModal}
+        onClose={() => setShowNameModal(false)}
+        onSubmit={handleSubmitScore}
+        wpm={wpm}
+        accuracy={accuracy}
+        time={timer}
+        currentBestScore={currentBestScore}
+        scoreUpdateStatus={scoreUpdateStatus}
+      />
     </div>
   );
 }

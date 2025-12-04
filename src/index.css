@@ -13,13 +13,13 @@
     @apply scroll-smooth;
   }
 
-  body {
+body {
     @apply m-0 font-mono bg-bg-primary text-text-primary overflow-x-hidden;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-  }
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
 
-  code {
+code {
     @apply font-mono;
   }
 }
@@ -56,5 +56,5 @@
     @apply absolute left-0 top-0 bottom-0 w-0.5;
     background: #e2b714;
     animation: blink 1s infinite;
-  }
+}
 }

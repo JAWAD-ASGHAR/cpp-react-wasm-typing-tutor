@@ -66,6 +66,7 @@ Quick version:
 - Visual feedback (green for correct, red for mistakes)
 - Progress tracking
 - Clean, simple interface
+- **Leaderboard system** - Compete with others and see top scores (optional, requires Supabase setup)
 
 ## What You Can Learn From This Project
 
@@ -89,6 +90,23 @@ Quick version:
 - **WebAssembly (WASM)**: Binary format that runs in browsers
 - **React**: JavaScript library for building user interfaces
 - **Vite**: Build tool that makes development easier
+- **Tailwind CSS**: Utility-first CSS framework for styling
+- **Supabase**: Backend-as-a-Service for leaderboard (optional)
+
+## Leaderboard Setup (Optional)
+
+To enable the leaderboard feature:
+
+1. Create a Supabase account and project at [supabase.com](https://supabase.com)
+2. Follow the setup instructions in [SUPABASE_SETUP.md](SUPABASE_SETUP.md)
+3. Create a `.env` file in the project root:
+   ```env
+   VITE_SUPABASE_URL=your-supabase-url
+   VITE_SUPABASE_ANON_KEY=your-anon-key
+   ```
+4. Run the SQL schema from `supabase-schema.sql` in your Supabase SQL Editor
+
+The leaderboard will automatically appear once configured!
 
 ## Building for Production
 
