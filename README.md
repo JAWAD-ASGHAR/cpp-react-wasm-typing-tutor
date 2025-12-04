@@ -38,9 +38,21 @@ cpp-react-wasm-typing-tutor/
 │   └── bindings.cpp           - Connects C++ to JavaScript
 │
 ├── React Files (the "face")
-│   ├── src/App.jsx            - Main screen
-│   ├── src/wasmLoader.js      - Loads the C++ code
-│   └── public/                - WebAssembly files go here
+│   ├── src/
+│   │   ├── App.jsx            - Main router and route definitions
+│   │   ├── main.jsx           - Application entry point
+│   │   ├── pages/
+│   │   │   ├── TypingTest.jsx - Main typing test interface
+│   │   │   ├── LeaderboardPage.jsx - Global leaderboard view
+│   │   │   └── ProfilePage.jsx - User profile with stats and graphs
+│   │   ├── components/
+│   │   │   ├── UsernameButton.jsx - Username display and navigation
+│   │   │   ├── NameInputModal.jsx - Username input modal
+│   │   │   └── Leaderboard.jsx - Leaderboard component (legacy)
+│   │   ├── lib/
+│   │   │   └── supabase.js    - Supabase client configuration
+│   │   └── wasmLoader.js       - Loads the C++ code
+│   └── public/                - WebAssembly files and static assets
 │
 └── Build Files
     ├── Makefile               - Builds the C++ code
@@ -61,12 +73,35 @@ Quick version:
 
 ## Features
 
-- Real-time typing speed (WPM - words per minute)
-- Accuracy tracking (% of correct characters)
-- Visual feedback (green for correct, red for mistakes)
-- Progress tracking
-- Clean, simple interface
-- **Leaderboard system** - Compete with others and see top scores (optional, requires Supabase setup)
+### Typing Test
+- **60-second timed tests** - Tests automatically finish after 60 seconds or when you complete all text
+- **Real-time statistics** - Live WPM (words per minute) and accuracy tracking
+- **Visual feedback** - Color-coded characters (green for correct, red for mistakes)
+- **Smart timer** - Timer only starts when you begin typing, not when you click start
+- **Keyboard shortcuts**:
+  - `Enter` - Start test or restart after completion
+  - `Tab` - Restart test during active session
+- **Auto-save scores** - All test results are automatically saved to your profile
+
+### Profile & Progress Tracking
+- **Personal profile page** - View your typing history and statistics
+- **Progress graphs** - Interactive charts showing WPM and Accuracy trends over time (day/week/month views)
+- **Activity heatmap** - GitHub-style contribution graph showing your daily practice activity
+- **Session history** - Complete history of all your tests with filtering options (today, week, month, year, all time)
+- **Best score tracking** - See your personal best and leaderboard position
+- **Shareable profiles** - Each user has a unique profile URL that can be shared
+
+### Leaderboard
+- **Global rankings** - See top 100 typists ranked by WPM, accuracy, and time
+- **Score comparison** - Rankings consider WPM first, then accuracy, then time
+- **User profiles** - Click any username to view their profile and progress
+- **Real-time updates** - Leaderboard updates automatically as new scores are submitted
+
+### User Experience
+- **Username management** - Set your username once, it's remembered across sessions
+- **Multi-page navigation** - Seamless navigation between Test, Leaderboard, and Profile pages
+- **Responsive design** - Works beautifully on desktop and mobile devices
+- **Dark theme** - Easy on the eyes with a modern dark color scheme
 
 ## What You Can Learn From This Project
 
@@ -89,36 +124,73 @@ Quick version:
 - **Emscripten**: Tool that compiles C++ to WebAssembly
 - **WebAssembly (WASM)**: Binary format that runs in browsers
 - **React**: JavaScript library for building user interfaces
+- **React Router**: Client-side routing for multi-page navigation
 - **Vite**: Build tool that makes development easier
 - **Tailwind CSS**: Utility-first CSS framework for styling
-- **Supabase**: Backend-as-a-Service for leaderboard (optional)
+- **Recharts**: Charting library for progress graphs
+- **Supabase**: Backend-as-a-Service for leaderboard and user data storage
+- **React Icons**: Icon library for UI elements
 
 ## Leaderboard Setup (Optional)
 
-To enable the leaderboard feature:
+To enable the leaderboard and profile features:
 
-1. Create a Supabase account and project at [supabase.com](https://supabase.com)
-2. Get your project URL and anon key from the Supabase dashboard
-3. Create a `.env` file in the project root:
+1. **Create a Supabase account and project** at [supabase.com](https://supabase.com)
+
+2. **Get your credentials** from the Supabase dashboard:
+   - Go to Project Settings → API
+   - Copy your Project URL and anon/public key
+
+3. **Create a `.env` file** in the project root:
    ```env
-   VITE_SUPABASE_URL=your-supabase-url
-   VITE_SUPABASE_ANON_KEY=your-anon-key
+   VITE_SUPABASE_URL=https://your-project.supabase.co
+   VITE_SUPABASE_ANON_KEY=your-anon-key-here
    ```
-4. Run the SQL schema from `supabase-schema.sql` in your Supabase SQL Editor (go to SQL Editor → New Query → paste the SQL → Run)
 
-The leaderboard will automatically appear once configured!
+4. **Create the database table**:
+   - Go to SQL Editor in your Supabase dashboard
+   - Click "New Query"
+   - Copy and paste the contents of `supabase-schema.sql`
+   - Click "Run" to execute the SQL
+
+5. **Enable Row Level Security (RLS)**:
+   - The schema includes RLS policies, but verify they're enabled
+   - Go to Authentication → Policies to check
+
+Once configured, the leaderboard and profile features will automatically be available! All test scores will be saved to your profile, and you can view your progress over time.
 
 ## Building for Production
 
-When you're ready to share your app:
+When you're ready to deploy your app:
 
 ```bash
+# Build the WebAssembly files
 make
+
+# Copy WASM files to public directory
 cp typing.js typing.wasm public/
+
+# Build the React app
 npm run build
 ```
 
-The finished app will be in the `dist/` folder.
+The finished app will be in the `dist/` folder, ready to deploy to any static hosting service (Vercel, Netlify, GitHub Pages, etc.).
+
+### Deployment Notes
+
+- **Vercel**: The project includes a `vercel.json` file for proper SPA routing
+- **Environment Variables**: Make sure to set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in your hosting platform's environment variables
+- **Public Files**: Ensure `typing.js` and `typing.wasm` are in the `public/` folder before building
+
+## How to Use
+
+1. **Start a Test**: Click "Start Test" or press `Enter`
+2. **Type the Text**: Begin typing when ready - the timer starts with your first keystroke
+3. **View Results**: After completing the text or 60 seconds, see your WPM, accuracy, and time
+4. **Set Username**: If you haven't set a username, you'll be prompted after your first test
+5. **View Profile**: Click your username in the header to see your progress, graphs, and history
+6. **Check Leaderboard**: Click the trophy icon to see top typists
+7. **Share Profile**: Your profile URL can be shared with others (e.g., `/profile/YourUsername`)
 
 ---
 
