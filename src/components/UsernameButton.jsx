@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { FiUser, FiEdit2, FiCheck, FiX } from 'react-icons/fi';
 
-export default function UsernameButton({ onUsernameChange }) {
+export default function UsernameButton({ onUsernameChange, onProfileClick }) {
   const [username, setUsername] = useState('');
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState('');
@@ -106,18 +106,30 @@ export default function UsernameButton({ onUsernameChange }) {
 
   return (
     <button
-      onClick={handleEdit}
+      onClick={() => {
+        if (username && onProfileClick) {
+          onProfileClick();
+        } else {
+          handleEdit();
+        }
+      }}
       className="flex items-center gap-2 px-3 py-2 text-text-secondary hover:text-text-primary transition-colors text-sm group max-w-full"
-      title={username.length > 15 ? username : 'Click to edit username'}
+      title={username ? (username.length > 15 ? username : 'Click to view profile') : 'Set your username'}
     >
       <FiUser className="w-4 h-4 flex-shrink-0" />
-      <span className="hidden md:inline truncate max-w-[140px]" title={username}>
-        {getDisplayUsername()}
-      </span>
-      <span className="md:hidden truncate max-w-[80px]" title={username}>
-        {username.length > 10 ? username.substring(0, 8) + '...' : username}
-      </span>
-      <FiEdit2 className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+      {username ? (
+        <>
+          <span className="hidden md:inline truncate max-w-[140px]" title={username}>
+            {getDisplayUsername()}
+          </span>
+          <span className="md:hidden truncate max-w-[80px]" title={username}>
+            {username.length > 10 ? username.substring(0, 8) + '...' : username}
+          </span>
+          <FiEdit2 className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+        </>
+      ) : (
+        <span className="hidden md:inline">Set Username</span>
+      )}
     </button>
   );
 }
