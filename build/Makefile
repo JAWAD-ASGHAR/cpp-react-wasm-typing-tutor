@@ -3,12 +3,16 @@
 # Emscripten compiler
 EMCC = emcc
 
-# Source files
-CPP_SOURCES = bindings.cpp WordGenerator.cpp TypingSession.cpp Timer.cpp
+# Directories
+CPP_DIR = ../cpp
+OUTPUT_DIR = ../public
 
-# Output files
-OUTPUT_JS = typing.js
-OUTPUT_WASM = typing.wasm
+# Source files (relative to cpp directory)
+CPP_SOURCES = $(CPP_DIR)/bindings.cpp $(CPP_DIR)/WordGenerator.cpp $(CPP_DIR)/TypingSession.cpp $(CPP_DIR)/Timer.cpp
+
+# Output files (in public directory - where Vite serves them from)
+OUTPUT_JS = $(OUTPUT_DIR)/typing.js
+OUTPUT_WASM = $(OUTPUT_DIR)/typing.wasm
 
 # Compiler flags
 EMCC_FLAGS = -O2 \
@@ -19,6 +23,7 @@ EMCC_FLAGS = -O2 \
 	-s EXPORT_NAME="'Module'" \
 	-s ALLOW_MEMORY_GROWTH=1 \
 	-s INITIAL_MEMORY=16777216 \
+	-I$(CPP_DIR) \
 	--no-entry
 
 # Default target
@@ -31,7 +36,7 @@ $(OUTPUT_JS): $(CPP_SOURCES)
 
 # Clean build artifacts
 clean:
-	rm -f $(OUTPUT_JS) $(OUTPUT_WASM) *.o
+	rm -f $(OUTPUT_JS) $(OUTPUT_WASM) $(CPP_DIR)/*.o
 
 # Help
 help:

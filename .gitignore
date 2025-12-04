@@ -3,10 +3,11 @@ node_modules/
 
 # Build artifacts
 dist/
-build/
+build/*.o
 *.o
 typing.js
 typing.wasm
+# Note: build/Makefile and build/build.sh are tracked (not ignored)
 
 # Keep public directory WASM files tracked (they're needed for serving)
 # Uncomment below if you want to ignore them too:

@@ -31,32 +31,45 @@ When you type, the React app sends your input to the C++ code running in WebAsse
 
 ```
 cpp-react-wasm-typing-tutor/
-├── C++ Files (the "brain")
-│   ├── WordGenerator.cpp/h    - Creates random text
-│   ├── TypingSession.cpp/h    - Tracks typing and calculates stats
-│   ├── Timer.cpp/h            - Measures time
-│   └── bindings.cpp           - Connects C++ to JavaScript
+├── cpp/                       - C++ Source Files (the "brain")
+│   ├── WordGenerator.cpp/h   - Creates random text
+│   ├── TypingSession.cpp/h   - Tracks typing and calculates stats
+│   ├── Timer.cpp/h           - Measures time
+│   └── bindings.cpp          - Connects C++ to JavaScript
 │
-├── React Files (the "face")
-│   ├── src/
-│   │   ├── App.jsx            - Main router and route definitions
-│   │   ├── main.jsx           - Application entry point
-│   │   ├── pages/
-│   │   │   ├── TypingTest.jsx - Main typing test interface
-│   │   │   ├── LeaderboardPage.jsx - Global leaderboard view
-│   │   │   └── ProfilePage.jsx - User profile with stats and graphs
-│   │   ├── components/
-│   │   │   ├── UsernameButton.jsx - Username display and navigation
-│   │   │   ├── NameInputModal.jsx - Username input modal
-│   │   │   └── Leaderboard.jsx - Leaderboard component (legacy)
-│   │   ├── lib/
-│   │   │   └── supabase.js    - Supabase client configuration
-│   │   └── wasmLoader.js       - Loads the C++ code
-│   └── public/                - WebAssembly files and static assets
+├── build/                     - Build Scripts
+│   ├── Makefile              - Builds the C++ code to WebAssembly
+│   └── build.sh              - Complete build script
 │
-└── Build Files
-    ├── Makefile               - Builds the C++ code
-    └── package.json           - JavaScript dependencies
+├── src/                       - React Source Files (the "face")
+│   ├── App.jsx               - Main router and route definitions
+│   ├── main.jsx              - Application entry point
+│   ├── pages/
+│   │   ├── TypingTest.jsx    - Main typing test interface
+│   │   ├── LeaderboardPage.jsx - Global leaderboard view
+│   │   └── ProfilePage.jsx   - User profile with stats and graphs
+│   ├── components/
+│   │   ├── UsernameButton.jsx - Username display and navigation
+│   │   ├── NameInputModal.jsx - Username input modal
+│   │   └── Leaderboard.jsx   - Leaderboard component (legacy)
+│   ├── lib/
+│   │   └── supabase.js       - Supabase client configuration
+│   └── wasmLoader.js         - Loads the C++ code
+│
+├── public/                    - Static Assets
+│   ├── favicon.png           - Site favicon
+│   ├── typing.js             - Compiled WebAssembly JS (generated)
+│   └── typing.wasm           - Compiled WebAssembly binary (generated)
+│
+└── Root Files
+    ├── package.json          - JavaScript dependencies
+    ├── vite.config.js        - Vite configuration
+    ├── tailwind.config.js    - Tailwind CSS configuration
+    ├── index.html            - HTML entry point
+    ├── vercel.json           - Vercel deployment config
+    ├── supabase-schema.sql   - Database schema
+    ├── README.md             - This file
+    └── QUICKSTART.md         - Quick start guide
 ```
 
 ## Getting Started
@@ -66,10 +79,9 @@ See [QUICKSTART.md](QUICKSTART.md) for step-by-step setup instructions.
 Quick version:
 1. Install Emscripten (compiles C++ to WebAssembly)
 2. Install Node.js
-3. Run `make` to build
-4. Copy files to `public/`
-5. Run `npm install`
-6. Run `npm run dev`
+3. Run `cd build && make` to build WebAssembly (files go directly to `public/`)
+4. Run `npm install`
+5. Run `npm run dev`
 
 ## Features
 
@@ -164,11 +176,10 @@ Once configured, the leaderboard and profile features will automatically be avai
 When you're ready to deploy your app:
 
 ```bash
-# Build the WebAssembly files
+# Build the WebAssembly files (outputs directly to public/)
+cd build
 make
-
-# Copy WASM files to public directory
-cp typing.js typing.wasm public/
+cd ..
 
 # Build the React app
 npm run build
@@ -180,7 +191,7 @@ The finished app will be in the `dist/` folder, ready to deploy to any static ho
 
 - **Vercel**: The project includes a `vercel.json` file for proper SPA routing
 - **Environment Variables**: Make sure to set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in your hosting platform's environment variables
-- **Public Files**: Ensure `typing.js` and `typing.wasm` are in the `public/` folder before building
+- **Public Files**: The build process creates `typing.js` and `typing.wasm` directly in the `public/` folder
 
 ## How to Use
 

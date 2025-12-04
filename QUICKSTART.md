@@ -48,17 +48,14 @@ npm --version
    source ~/emsdk/emsdk_env.sh
    ```
 
-3. Build the WebAssembly files:
+3. Build the WebAssembly files (they'll be created in public/):
    ```bash
+   cd build
    make
+   cd ..
    ```
 
-4. Copy the files to the public folder:
-   ```bash
-   cp typing.js typing.wasm public/
-   ```
-
-5. Install JavaScript packages:
+4. Install JavaScript packages:
    ```bash
    npm install
    ```

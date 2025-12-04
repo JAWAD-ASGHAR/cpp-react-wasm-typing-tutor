@@ -14,6 +14,7 @@ if ! command -v emcc &> /dev/null; then
 fi
 
 echo "Step 1: Compiling C++ to WebAssembly..."
+cd "$(dirname "$0")"
 make clean
 make
 
@@ -22,8 +23,14 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
+if [ $? -ne 0 ]; then
+    echo "Error: WebAssembly compilation failed!"
+    exit 1
+fi
+
 echo ""
 echo "Step 2: Installing Node.js dependencies..."
+cd ..
 npm install
 
 if [ $? -ne 0 ]; then
@@ -32,7 +39,9 @@ if [ $? -ne 0 ]; then
 fi
 
 echo ""
-echo "Build complete! You can now run:"
+echo "Build complete! Files are in public/ directory."
+echo ""
+echo "You can now run:"
 echo "  npm run dev"
 echo ""
 echo "Or build for production:"
