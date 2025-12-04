@@ -17,7 +17,7 @@ OUTPUT_WASM = $(OUTPUT_DIR)/typing.wasm
 
 # Compiler flags
 EMCC_FLAGS = -O2 \
-	-s EXPORTED_FUNCTIONS='["_generateText","_startSession","_updateInput","_getAccuracy","_getWPM","_resetSession","_getElapsedSeconds","_malloc","_free"]' \
+	-s EXPORTED_FUNCTIONS='["_setGeneratorType","_generateText","_startSession","_updateInput","_getAccuracy","_getWPM","_resetSession","_getElapsedSeconds","_malloc","_free"]' \
 	-s EXPORTED_RUNTIME_METHODS='["cwrap","UTF8ToString","stringToUTF8"]' \
 	-s WASM=1 \
 	-s MODULARIZE=1 \

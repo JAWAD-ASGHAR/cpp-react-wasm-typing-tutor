@@ -7,6 +7,19 @@ import NameInputModal from '../components/NameInputModal';
 import UsernameButton from '../components/UsernameButton';
 import { supabase, isLeaderboardEnabled } from '../lib/supabase';
 
+// Generator type constants matching C++ enum
+const GENERATOR_TYPES = {
+  RANDOM_WORDS: 0,
+  SENTENCES: 1,
+  MIXED_CASE: 2
+};
+
+const GENERATOR_LABELS = {
+  [GENERATOR_TYPES.RANDOM_WORDS]: 'Random Words',
+  [GENERATOR_TYPES.SENTENCES]: 'Sentences',
+  [GENERATOR_TYPES.MIXED_CASE]: 'Mixed Case'
+};
+
 export default function TypingTest() {
   const [wasm, setWasm] = useState(null);
   const [targetText, setTargetText] = useState('');
@@ -22,27 +35,53 @@ export default function TypingTest() {
   const [showNameModal, setShowNameModal] = useState(false);
   const [currentBestScore, setCurrentBestScore] = useState(null);
   const [scoreUpdateStatus, setScoreUpdateStatus] = useState(null);
+  const [generatorType, setGeneratorType] = useState(GENERATOR_TYPES.RANDOM_WORDS);
   const intervalRef = useRef(null);
   const inputRef = useRef(null);
   const textContainerRef = useRef(null);
 
+  // Helper function to get appropriate count based on generator type
+  const getTextCount = (type) => {
+    switch (type) {
+      case GENERATOR_TYPES.SENTENCES:
+        return 3; // 3 sentences is a good length for typing test
+      case GENERATOR_TYPES.MIXED_CASE:
+        return 25; // Same as random words
+      case GENERATOR_TYPES.RANDOM_WORDS:
+      default:
+        return 25; // 25 words is standard
+    }
+  };
+
   useEffect(() => {
     loadWasm().then((wasmFunctions) => {
       setWasm(wasmFunctions);
+      // Initialize generator type to random words
+      wasmFunctions.setGeneratorType(GENERATOR_TYPES.RANDOM_WORDS);
     });
   }, []);
+
+  // Update generator type when selection changes
+  useEffect(() => {
+    if (wasm && !isTestActive) {
+      wasm.setGeneratorType(generatorType);
+    }
+  }, [generatorType, wasm, isTestActive]);
 
   const restartTest = () => {
     if (!wasm) return;
     
     if (wasm) {
       wasm.resetSession();
+      // Ensure generator type is set before generating text
+      wasm.setGeneratorType(generatorType);
     }
     setCurrentBestScore(null);
     setScoreUpdateStatus(null);
     setShowNameModal(false);
     
-    const generatedText = wasm.generateText(25);
+    const textCount = getTextCount(generatorType);
+    const generatedText = wasm.generateText(textCount);
     setTargetText(generatedText);
     setUserInput('');
     setIsTestActive(true);
@@ -135,7 +174,10 @@ export default function TypingTest() {
   const startTest = () => {
     if (!wasm) return;
 
-    const generatedText = wasm.generateText(25);
+    // Ensure generator type is set before generating text
+    wasm.setGeneratorType(generatorType);
+    const textCount = getTextCount(generatorType);
+    const generatedText = wasm.generateText(textCount);
     setTargetText(generatedText);
     setUserInput('');
     setIsTestActive(true);
@@ -498,10 +540,35 @@ export default function TypingTest() {
           </div>
         )}
 
+        {/* Generator Type Selector - Only show when test is not active */}
+        {!isTestActive && (
+          <div className="flex flex-col items-center gap-3 py-4">
+            <label className="text-xs text-text-tertiary uppercase tracking-widest mb-1">
+              Text Type
+            </label>
+            <div className="flex gap-2 bg-bg-secondary rounded-lg p-1 border border-text-tertiary">
+              {Object.entries(GENERATOR_LABELS).map(([type, label]) => (
+                <button
+                  key={type}
+                  onClick={() => setGeneratorType(Number(type))}
+                  disabled={isTestActive}
+                  className={`px-4 py-2 text-sm font-medium rounded-md transition-all duration-200 ${
+                    generatorType === Number(type)
+                      ? 'bg-accent text-bg-primary shadow-md'
+                      : 'text-text-secondary hover:text-text-primary hover:bg-bg-tertiary'
+                  } ${isTestActive ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Language Label */}
         {targetText && (
           <div className="text-center text-sm text-text-tertiary uppercase tracking-widest -mb-2.5">
-            english
+            {GENERATOR_LABELS[generatorType].toLowerCase()} • english
           </div>
         )}
 

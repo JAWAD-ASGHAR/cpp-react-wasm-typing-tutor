@@ -51,6 +51,7 @@ export async function loadWasm() {
   };
 
   wasmFunctions = {
+    setGeneratorType: wasmModule.cwrap("setGeneratorType", "void", ["number"]),
     generateText: generateText,
     startSession: wasmModule.cwrap("startSession", "void", ["string"]),
     updateInput: wasmModule.cwrap("updateInput", "void", ["string"]),

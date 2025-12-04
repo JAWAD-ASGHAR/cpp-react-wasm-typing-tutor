@@ -4,16 +4,21 @@
 #include <sstream>
 using namespace std;
 
-class WordGenerator {
+// Include base class
+#include "TextGenerator.cpp"
+
+// RandomWordGenerator inherits from TextGenerator - demonstrates Inheritance
+class RandomWordGenerator : public TextGenerator {
 private:
-    vector<string> words;
+    vector<string> words;  // Encapsulation - private member
 
 public:
-    WordGenerator();
-    string generateText(int wordCount);
+    RandomWordGenerator();
+    // Override virtual function - demonstrates Polymorphism
+    string generateText(int count) override;
 };
 
-WordGenerator::WordGenerator() {
+RandomWordGenerator::RandomWordGenerator() {
     words = {
         "apple", "green", "river", "monkey", "blue", "fast", "car", "laptop",
         "computer", "keyboard", "mouse", "screen", "window", "door", "house",
@@ -65,8 +70,8 @@ WordGenerator::WordGenerator() {
     };
 }
 
-string WordGenerator::generateText(int wordCount) {
-    if (wordCount <= 0 || words.empty()) {
+string RandomWordGenerator::generateText(int count) {
+    if (count <= 0 || words.empty()) {
         return "";
     }
 
@@ -75,7 +80,7 @@ string WordGenerator::generateText(int wordCount) {
     uniform_int_distribution<> dis(0, words.size() - 1);
 
     ostringstream result;
-    for (int i = 0; i < wordCount; i++) {
+    for (int i = 0; i < count; i++) {
         if (i > 0) {
             result << " ";
         }
