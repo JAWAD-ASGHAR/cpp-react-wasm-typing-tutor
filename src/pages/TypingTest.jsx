@@ -36,6 +36,7 @@ export default function TypingTest() {
   const [currentBestScore, setCurrentBestScore] = useState(null);
   const [scoreUpdateStatus, setScoreUpdateStatus] = useState(null);
   const [generatorType, setGeneratorType] = useState(GENERATOR_TYPES.RANDOM_WORDS);
+  const [isComposing, setIsComposing] = useState(false);
   const intervalRef = useRef(null);
   const inputRef = useRef(null);
   const textContainerRef = useRef(null);
@@ -196,14 +197,19 @@ export default function TypingTest() {
     }, 100);
   };
 
-  const handleInputChange = (e) => {
+  const processInput = (inputValue) => {
     if (!isTestActive || isTestComplete) return;
 
-    let typed = e.target.value;
+    let typed = inputValue;
     
     // Normalize input for mobile keyboards - remove any non-printable characters that might slip in
     // Keep only printable characters and preserve spaces
     typed = typed.replace(/[\x00-\x1F\x7F-\x9F]/g, '');
+    
+    // Limit input length to prevent overflow
+    if (typed.length > targetText.length) {
+      typed = typed.substring(0, targetText.length);
+    }
     
     if (!hasStartedTyping && typed.length > 0) {
       setHasStartedTyping(true);
@@ -226,6 +232,39 @@ export default function TypingTest() {
     // Automatically finish test when all text is typed
     if (typed.length >= targetText.length) {
       finishTest();
+    }
+  };
+
+  const handleInputChange = (e) => {
+    if (!isTestActive || isTestComplete) return;
+
+    // During composition (mobile keyboard autocorrect/prediction), only update visual state
+    // Don't evaluate accuracy until composition ends
+    if (isComposing) {
+      // Update visual input but don't process it yet
+      setUserInput(e.target.value);
+      return;
+    }
+
+    // Normal processing when not composing
+    processInput(e.target.value);
+  };
+
+  const handleCompositionStart = () => {
+    setIsComposing(true);
+  };
+
+  const handleCompositionEnd = (e) => {
+    setIsComposing(false);
+    // Process the final input after composition ends
+    // This ensures we get the actual characters the user typed, not intermediate autocorrect suggestions
+    if (isTestActive && !isTestComplete && inputRef.current) {
+      // Use requestAnimationFrame to ensure the DOM is updated with the final value
+      requestAnimationFrame(() => {
+        if (inputRef.current) {
+          processInput(inputRef.current.value);
+        }
+      });
     }
   };
 
@@ -614,17 +653,8 @@ export default function TypingTest() {
           value={userInput}
           onChange={handleInputChange}
           onKeyDown={handleInputKeyDown}
-          onCompositionStart={(e) => {
-            // Prevent composition events from interfering
-            e.stopPropagation();
-          }}
-          onCompositionEnd={(e) => {
-            // Handle composition end (for mobile keyboards)
-            e.stopPropagation();
-            if (e.target.value !== userInput) {
-              handleInputChange(e);
-            }
-          }}
+          onCompositionStart={handleCompositionStart}
+          onCompositionEnd={handleCompositionEnd}
           disabled={!isTestActive}
           className="absolute opacity-0 pointer-events-none w-0 h-0 border-0 bg-transparent outline-none text-transparent"
           autoComplete="off"
@@ -633,6 +663,8 @@ export default function TypingTest() {
           spellCheck="false"
           inputMode="text"
           enterKeyHint="done"
+          data-1p-ignore
+          data-lpignore="true"
         />
 
         {/* Controls */}
