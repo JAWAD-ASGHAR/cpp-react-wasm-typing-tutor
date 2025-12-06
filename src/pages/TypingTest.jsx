@@ -199,7 +199,11 @@ export default function TypingTest() {
   const handleInputChange = (e) => {
     if (!isTestActive || isTestComplete) return;
 
-    const typed = e.target.value;
+    let typed = e.target.value;
+    
+    // Normalize input for mobile keyboards - remove any non-printable characters that might slip in
+    // Keep only printable characters and preserve spaces
+    typed = typed.replace(/[\x00-\x1F\x7F-\x9F]/g, '');
     
     if (!hasStartedTyping && typed.length > 0) {
       setHasStartedTyping(true);
@@ -484,56 +488,56 @@ export default function TypingTest() {
   };
 
   return (
-    <div className="min-h-screen bg-bg-primary text-text-primary font-mono flex justify-center items-center p-5 transition-colors duration-300">
-      <div className="max-w-[1000px] w-full flex flex-col gap-5 animate-fade-in">
+    <div className="min-h-screen bg-bg-primary text-text-primary font-mono flex justify-center items-center p-3 sm:p-4 md:p-5 transition-colors duration-300">
+      <div className="max-w-[1000px] w-full flex flex-col gap-3 sm:gap-4 md:gap-5 animate-fade-in">
         {/* Header */}
-        <header className="flex justify-between items-center py-5">
-          <div className="flex-1 flex justify-start items-center">
+        <header className="flex justify-between items-center py-3 sm:py-4 md:py-5">
+          <div className="flex-1 flex justify-start items-center min-w-0">
             <UsernameButton />
           </div>
-          <div className="flex flex-col items-center gap-1">
-            <Link to="/" className="flex flex-col items-center gap-1">
-              <div className="flex items-center gap-2">
-                <FaRegKeyboard className="w-6 h-6 md:w-7 md:h-7 text-accent" />
-                <span className="text-2xl md:text-3xl font-bold text-text-primary tracking-tight transition-colors duration-300">
+          <div className="flex flex-col items-center gap-0.5 sm:gap-1 flex-shrink-0 px-2">
+            <Link to="/" className="flex flex-col items-center gap-0.5 sm:gap-1">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <FaRegKeyboard className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 text-accent flex-shrink-0" />
+                <span className="text-xl sm:text-2xl md:text-3xl font-bold text-text-primary tracking-tight transition-colors duration-300">
                   typetutor
                 </span>
               </div>
-              <span className="text-xs text-text-secondary uppercase tracking-widest font-medium">
+              <span className="text-[10px] sm:text-xs text-text-secondary uppercase tracking-widest font-medium">
                 wasm
               </span>
             </Link>
           </div>
-          <div className="flex-1 flex justify-end items-center">
+          <div className="flex-1 flex justify-end items-center min-w-0">
             <Link
               to="/leaderboard"
-              className="flex items-center gap-2 px-4 py-2 text-text-secondary hover:text-text-primary transition-colors"
+              className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 text-text-secondary hover:text-text-primary transition-colors"
               title="View Leaderboard"
             >
-              <FiAward className="w-5 h-5" />
-              <span className="hidden md:inline text-sm">Leaderboard</span>
+              <FiAward className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
+              <span className="hidden sm:inline text-xs sm:text-sm">Leaderboard</span>
             </Link>
           </div>
         </header>
 
         {/* Main Stats Bar - Only show when typing has started */}
         {isTestActive && hasStartedTyping && (
-          <div className="flex justify-center gap-5 md:gap-10 py-4 md:py-5 animate-slide-down">
-            <div className="flex items-center gap-2 text-text-secondary text-xs md:text-sm">
-              <FiClock className="w-[18px] h-[18px] text-text-tertiary" />
-              <span className="text-base md:text-xl font-semibold text-text-primary min-w-[40px] md:min-w-[50px]">
+          <div className="flex justify-center gap-3 sm:gap-4 md:gap-5 lg:gap-10 py-3 sm:py-4 md:py-5 animate-slide-down">
+            <div className="flex items-center gap-1.5 sm:gap-2 text-text-secondary text-xs sm:text-sm">
+              <FiClock className="w-4 h-4 sm:w-[18px] sm:h-[18px] text-text-tertiary flex-shrink-0" />
+              <span className="text-sm sm:text-base md:text-xl font-semibold text-text-primary min-w-[35px] sm:min-w-[40px] md:min-w-[50px] text-right">
                 {timer.toFixed(1)}s
               </span>
             </div>
-            <div className="flex items-center gap-2 text-text-secondary text-xs md:text-sm">
-              <FiTrendingUp className="w-[18px] h-[18px] text-text-tertiary" />
-              <span className="text-base md:text-xl font-semibold text-text-primary min-w-[40px] md:min-w-[50px]">
+            <div className="flex items-center gap-1.5 sm:gap-2 text-text-secondary text-xs sm:text-sm">
+              <FiTrendingUp className="w-4 h-4 sm:w-[18px] sm:h-[18px] text-text-tertiary flex-shrink-0" />
+              <span className="text-sm sm:text-base md:text-xl font-semibold text-text-primary min-w-[35px] sm:min-w-[40px] md:min-w-[50px] text-right">
                 {Math.round(wpm)}
               </span>
             </div>
-            <div className="flex items-center gap-2 text-text-secondary text-xs md:text-sm">
-              <FiTarget className="w-[18px] h-[18px] text-text-tertiary" />
-              <span className="text-base md:text-xl font-semibold text-text-primary min-w-[40px] md:min-w-[50px]">
+            <div className="flex items-center gap-1.5 sm:gap-2 text-text-secondary text-xs sm:text-sm">
+              <FiTarget className="w-4 h-4 sm:w-[18px] sm:h-[18px] text-text-tertiary flex-shrink-0" />
+              <span className="text-sm sm:text-base md:text-xl font-semibold text-text-primary min-w-[45px] sm:min-w-[50px] md:min-w-[60px] text-right">
                 {accuracy.toFixed(1)}%
               </span>
             </div>
@@ -542,23 +546,26 @@ export default function TypingTest() {
 
         {/* Generator Type Selector - Only show when test is not active */}
         {!isTestActive && (
-          <div className="flex flex-col items-center gap-3 py-4">
-            <label className="text-xs text-text-tertiary uppercase tracking-widest mb-1">
+          <div className="flex flex-col items-center gap-2 sm:gap-3 py-3 sm:py-4">
+            <label className="text-[10px] sm:text-xs text-text-tertiary uppercase tracking-widest mb-0.5 sm:mb-1">
               Text Type
             </label>
-            <div className="flex gap-2 bg-bg-secondary rounded-lg p-1 border border-text-tertiary">
+            <div className="flex gap-1 sm:gap-2 bg-bg-secondary rounded-lg p-0.5 sm:p-1 border border-text-tertiary w-full max-w-md">
               {Object.entries(GENERATOR_LABELS).map(([type, label]) => (
                 <button
                   key={type}
                   onClick={() => setGeneratorType(Number(type))}
                   disabled={isTestActive}
-                  className={`px-4 py-2 text-sm font-medium rounded-md transition-all duration-200 ${
+                  className={`flex-1 px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-md transition-all duration-200 ${
                     generatorType === Number(type)
                       ? 'bg-accent text-bg-primary shadow-md'
                       : 'text-text-secondary hover:text-text-primary hover:bg-bg-tertiary'
                   } ${isTestActive ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
                 >
-                  {label}
+                  <span className="hidden sm:inline">{label}</span>
+                  <span className="sm:hidden">
+                    {label === 'Random Words' ? 'Words' : label === 'Mixed Case' ? 'Mixed' : label}
+                  </span>
                 </button>
               ))}
             </div>
@@ -567,14 +574,17 @@ export default function TypingTest() {
 
         {/* Language Label */}
         {targetText && (
-          <div className="text-center text-sm text-text-tertiary uppercase tracking-widest -mb-2.5">
-            {GENERATOR_LABELS[generatorType].toLowerCase()} • english
+          <div className="text-center text-xs sm:text-sm text-text-tertiary uppercase tracking-widest -mb-2 sm:-mb-2.5 px-2">
+            <span className="hidden sm:inline">{GENERATOR_LABELS[generatorType].toLowerCase()} • english</span>
+            <span className="sm:hidden">
+              {GENERATOR_LABELS[generatorType] === 'Random Words' ? 'words' : GENERATOR_LABELS[generatorType] === 'Mixed Case' ? 'mixed' : GENERATOR_LABELS[generatorType].toLowerCase()} • en
+            </span>
           </div>
         )}
 
         {/* Text Display Area */}
         <div 
-          className="bg-bg-secondary rounded-lg px-5 py-8 md:px-8 md:py-10 min-h-[180px] md:min-h-[200px] flex items-center justify-center cursor-text transition-colors duration-300 relative overflow-hidden focus-within:outline focus-within:outline-2 focus-within:outline-accent focus-within:outline-offset-2"
+          className="bg-bg-secondary rounded-lg px-3 py-6 sm:px-4 sm:py-7 md:px-5 md:py-8 lg:px-8 lg:py-10 min-h-[150px] sm:min-h-[180px] md:min-h-[200px] flex items-center justify-center cursor-text transition-colors duration-300 relative overflow-hidden focus-within:outline focus-within:outline-2 focus-within:outline-accent focus-within:outline-offset-1 sm:focus-within:outline-offset-2"
           onClick={() => {
             if (isTestActive || targetText) {
               inputRef.current?.focus();
@@ -584,15 +594,15 @@ export default function TypingTest() {
           {targetText ? (
             <div 
               ref={textContainerRef}
-              className="text-xl md:text-2xl leading-[1.8] md:leading-[2] tracking-wide text-text-secondary select-none w-full text-left overflow-x-hidden transition-all duration-200 scroll-smooth whitespace-normal"
+              className="text-base sm:text-lg md:text-xl lg:text-2xl leading-[1.6] sm:leading-[1.7] md:leading-[1.8] lg:leading-[2] tracking-wide text-text-secondary select-none w-full text-left overflow-x-hidden transition-all duration-200 scroll-smooth whitespace-normal"
               style={{ wordBreak: 'normal', overflowWrap: 'break-word' }}
             >
               {renderText()}
             </div>
           ) : (
-            <div className="text-center text-text-tertiary text-lg leading-[1.8]">
-              <p className="my-2">Click the button below to start a typing test</p>
-              <p className="text-sm opacity-70">Press Space or Enter to begin</p>
+            <div className="text-center text-text-tertiary text-sm sm:text-base md:text-lg leading-[1.6] sm:leading-[1.8] px-2">
+              <p className="my-1 sm:my-2">Click the button below to start a typing test</p>
+              <p className="text-xs sm:text-sm opacity-70">Press Space or Enter to begin</p>
             </div>
           )}
         </div>
@@ -604,65 +614,78 @@ export default function TypingTest() {
           value={userInput}
           onChange={handleInputChange}
           onKeyDown={handleInputKeyDown}
+          onCompositionStart={(e) => {
+            // Prevent composition events from interfering
+            e.stopPropagation();
+          }}
+          onCompositionEnd={(e) => {
+            // Handle composition end (for mobile keyboards)
+            e.stopPropagation();
+            if (e.target.value !== userInput) {
+              handleInputChange(e);
+            }
+          }}
           disabled={!isTestActive}
           className="absolute opacity-0 pointer-events-none w-0 h-0 border-0 bg-transparent outline-none text-transparent"
           autoComplete="off"
           autoCorrect="off"
           autoCapitalize="off"
           spellCheck="false"
+          inputMode="text"
+          enterKeyHint="done"
         />
 
         {/* Controls */}
-        <div className="flex justify-center items-center gap-4 py-5">
+        <div className="flex justify-center items-center gap-3 sm:gap-4 py-4 sm:py-5">
           {!isTestActive && !isTestComplete && (
             <button 
               onClick={startTest} 
-              className="flex items-center gap-2 px-6 py-3 text-base rounded-md cursor-pointer transition-all duration-200 font-mono bg-accent text-bg-primary border border-accent font-semibold hover:bg-[#f5c842] hover:-translate-y-0.5 hover:shadow-[0_4px_16px_rgba(226,183,20,0.3)] active:translate-y-0"
+              className="flex items-center gap-1.5 sm:gap-2 px-4 sm:px-5 md:px-6 py-2 sm:py-2.5 md:py-3 text-sm sm:text-base rounded-md cursor-pointer transition-all duration-200 font-mono bg-accent text-bg-primary border border-accent font-semibold hover:bg-[#f5c842] hover:-translate-y-0.5 hover:shadow-[0_4px_16px_rgba(226,183,20,0.3)] active:translate-y-0"
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                   startTest();
                 }
               }}
             >
-              <FiRefreshCw className="w-[18px] h-[18px]" />
-              Start Test
+              <FiRefreshCw className="w-4 h-4 sm:w-[18px] sm:h-[18px]" />
+              <span>Start Test</span>
             </button>
           )}
           
           {isTestComplete && (
-            <div className="flex flex-col items-center gap-5 animate-fade-in-up">
-              <div className="flex gap-5 md:gap-10 py-5">
-                <div className="flex flex-col items-center gap-2">
-                  <span className="text-xs text-text-tertiary uppercase tracking-widest">
+            <div className="flex flex-col items-center gap-4 sm:gap-5 animate-fade-in-up w-full">
+              <div className="flex gap-3 sm:gap-4 md:gap-5 lg:gap-10 py-3 sm:py-4 md:py-5 w-full justify-center">
+                <div className="flex flex-col items-center gap-1.5 sm:gap-2">
+                  <span className="text-[10px] sm:text-xs text-text-tertiary uppercase tracking-widest">
                     wpm
                   </span>
-                  <span className="text-2xl md:text-[2rem] font-bold text-accent">
+                  <span className="text-xl sm:text-2xl md:text-[2rem] font-bold text-accent">
                     {Math.round(wpm)}
                   </span>
                 </div>
-                <div className="flex flex-col items-center gap-2">
-                  <span className="text-xs text-text-tertiary uppercase tracking-widest">
+                <div className="flex flex-col items-center gap-1.5 sm:gap-2">
+                  <span className="text-[10px] sm:text-xs text-text-tertiary uppercase tracking-widest">
                     acc
                   </span>
-                  <span className="text-2xl md:text-[2rem] font-bold text-accent">
+                  <span className="text-xl sm:text-2xl md:text-[2rem] font-bold text-accent">
                     {accuracy.toFixed(1)}%
                   </span>
                 </div>
-                <div className="flex flex-col items-center gap-2">
-                  <span className="text-xs text-text-tertiary uppercase tracking-widest">
+                <div className="flex flex-col items-center gap-1.5 sm:gap-2">
+                  <span className="text-[10px] sm:text-xs text-text-tertiary uppercase tracking-widest">
                     time
                   </span>
-                  <span className="text-2xl md:text-[2rem] font-bold text-accent">
+                  <span className="text-xl sm:text-2xl md:text-[2rem] font-bold text-accent">
                     {timer.toFixed(1)}s
                   </span>
                 </div>
               </div>
               <button 
                 onClick={retry} 
-                className="flex items-center gap-2 px-6 py-3 text-base font-medium rounded-md cursor-pointer transition-all duration-200 font-mono bg-transparent text-text-primary border border-text-secondary hover:bg-bg-secondary hover:border-text-primary hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(0,0,0,0.3)] active:translate-y-0"
+                className="flex items-center gap-1.5 sm:gap-2 px-4 sm:px-5 md:px-6 py-2 sm:py-2.5 md:py-3 text-sm sm:text-base font-medium rounded-md cursor-pointer transition-all duration-200 font-mono bg-transparent text-text-primary border border-text-secondary hover:bg-bg-secondary hover:border-text-primary hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(0,0,0,0.3)] active:translate-y-0"
               >
-                <FiRefreshCw className="w-[18px] h-[18px]" />
-                Try Again
+                <FiRefreshCw className="w-4 h-4 sm:w-[18px] sm:h-[18px]" />
+                <span>Try Again</span>
               </button>
             </div>
           )}
@@ -670,39 +693,42 @@ export default function TypingTest() {
           {isTestActive && (
             <button 
               onClick={retry} 
-              className="p-3 w-11 h-11 flex items-center justify-center bg-bg-tertiary border border-text-tertiary text-text-primary rounded-md cursor-pointer transition-all duration-200 hover:bg-bg-secondary hover:border-text-primary hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(0,0,0,0.3)] active:translate-y-0" 
+              className="p-2.5 sm:p-3 w-10 h-10 sm:w-11 sm:h-11 flex items-center justify-center bg-bg-tertiary border border-text-tertiary text-text-primary rounded-md cursor-pointer transition-all duration-200 hover:bg-bg-secondary hover:border-text-primary hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(0,0,0,0.3)] active:translate-y-0" 
               title="Restart (Tab)"
             >
-              <FiRefreshCw />
+              <FiRefreshCw className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
           )}
         </div>
 
         {/* Footer Hints */}
-        <footer className="flex justify-center py-5 mt-auto">
-          <div className="text-xs text-text-tertiary flex flex-col md:flex-row gap-2 md:gap-5 text-center">
+        <footer className="flex justify-center py-3 sm:py-4 md:py-5 mt-auto">
+          <div className="text-[10px] sm:text-xs text-text-tertiary flex flex-col sm:flex-row gap-1.5 sm:gap-2 md:gap-5 text-center px-2">
             {!isTestActive && !isTestComplete && (
-              <span>
-                <span className="bg-bg-tertiary px-2 py-1 rounded font-mono mr-2 text-text-secondary border border-text-tertiary">
+              <span className="flex items-center justify-center gap-1 sm:gap-2">
+                <span className="bg-bg-tertiary px-1.5 sm:px-2 py-0.5 sm:py-1 rounded font-mono text-text-secondary border border-text-tertiary text-[10px] sm:text-xs">
                   enter
                 </span>
-                - start test
+                <span className="hidden sm:inline">-</span>
+                <span>start test</span>
               </span>
             )}
             {isTestActive && !isTestComplete && (
-              <span>
-                <span className="bg-bg-tertiary px-2 py-1 rounded font-mono mr-2 text-text-secondary border border-text-tertiary">
+              <span className="flex items-center justify-center gap-1 sm:gap-2">
+                <span className="bg-bg-tertiary px-1.5 sm:px-2 py-0.5 sm:py-1 rounded font-mono text-text-secondary border border-text-tertiary text-[10px] sm:text-xs">
                   tab
                 </span>
-                - restart
+                <span className="hidden sm:inline">-</span>
+                <span>restart</span>
               </span>
             )}
             {isTestComplete && (
-              <span>
-                <span className="bg-bg-tertiary px-2 py-1 rounded font-mono mr-2 text-text-secondary border border-text-tertiary">
+              <span className="flex items-center justify-center gap-1 sm:gap-2">
+                <span className="bg-bg-tertiary px-1.5 sm:px-2 py-0.5 sm:py-1 rounded font-mono text-text-secondary border border-text-tertiary text-[10px] sm:text-xs">
                   enter
                 </span>
-                - try again
+                <span className="hidden sm:inline">-</span>
+                <span>try again</span>
               </span>
             )}
           </div>
