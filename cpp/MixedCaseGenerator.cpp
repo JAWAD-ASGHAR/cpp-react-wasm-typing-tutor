@@ -3,13 +3,15 @@
 #include <random>
 #include <sstream>
 #include <cctype>
+#include <stdexcept>
 using namespace std;
 
 #include "TextGenerator.cpp"
+#include "Word.cpp"
 
 class MixedCaseGenerator : public TextGenerator {
 private:
-    vector<string> words;  
+    vector<Word> words;  
 
 public:
     MixedCaseGenerator();
@@ -20,7 +22,7 @@ private:
 };
 
 MixedCaseGenerator::MixedCaseGenerator() {
-    words = {
+    vector<string> wordStrings = {
         "apple", "green", "river", "monkey", "blue", "fast", "water", "light",
         "happy", "quiet", "small", "warm", "black", "white", "brown", "pink",
         "paper", "chair", "table", "phone", "music", "dance", "think", "learn",
@@ -55,6 +57,11 @@ MixedCaseGenerator::MixedCaseGenerator() {
         "catch", "drop", "break", "fix", "make", "do", "work", "play",
         "game", "fun", "time", "day", "year", "hour", "minute", "second"
     };
+    
+    words.clear();
+    for (const string& wordStr : wordStrings) {
+        words.push_back(Word(wordStr, "mixed"));
+    }
 }
 
 string MixedCaseGenerator::randomizeCase(const string& word) {
@@ -74,23 +81,44 @@ string MixedCaseGenerator::randomizeCase(const string& word) {
 }
 
 string MixedCaseGenerator::generateText(int count) {
-    if (count <= 0 || words.empty()) {
+    try {
+        if (count <= 0) {
+            throw invalid_argument("Word count must be positive");
+        }
+        
+        if (words.empty()) {
+            throw runtime_error("Word list is empty");
+        }
+
+        random_device rd;
+        mt19937 gen(rd());
+        uniform_int_distribution<> dis(0, words.size() - 1);
+
+        ostringstream result;
+        for (int i = 0; i < count; i++) {
+            if (i > 0) {
+                result << " ";
+            }
+            int randomIndex = dis(gen);
+            if (randomIndex < 0 || randomIndex >= words.size()) {
+                throw out_of_range("Invalid word index");
+            }
+            Word selectedWord = words[randomIndex];
+            if (!selectedWord.isValid()) {
+                throw runtime_error("Invalid word object");
+            }
+            result << randomizeCase(selectedWord.getText());
+        }
+
+        return result.str();
+    } catch (const invalid_argument& e) {
+        return "";
+    } catch (const runtime_error& e) {
+        return "";
+    } catch (const out_of_range& e) {
+        return "";
+    } catch (...) {
         return "";
     }
-
-    random_device rd;
-    mt19937 gen(rd());
-    uniform_int_distribution<> dis(0, words.size() - 1);
-
-    ostringstream result;
-    for (int i = 0; i < count; i++) {
-        if (i > 0) {
-            result << " ";
-        }
-        int randomIndex = dis(gen);
-        result << randomizeCase(words[randomIndex]);
-    }
-
-    return result.str();
 }
 

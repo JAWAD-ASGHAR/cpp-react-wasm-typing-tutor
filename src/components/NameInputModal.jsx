@@ -101,13 +101,13 @@ export default function NameInputModal({ isOpen, onClose, onSubmit, wpm, accurac
                   Your Username
                 </label>
                 <div className="relative">
-                  <FiUser className="absolute left-2.5 sm:left-3 top-1/2 transform -translate-y-1/2 text-text-tertiary w-4 h-4 sm:w-5 sm:h-5" />
+                  <FiUser className="absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 text-text-tertiary w-4 h-4 sm:w-5 sm:h-5 z-10 pointer-events-none" />
                   <input
                     type="text"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="Enter your username"
-                    className="w-full pl-9 sm:pl-10 pr-3 sm:pr-4 py-2 sm:py-2.5 md:py-3 bg-bg-tertiary border border-text-tertiary rounded-md text-text-primary placeholder-text-tertiary focus:outline-none focus:border-accent transition-colors text-sm sm:text-base"
+                    className="w-full pl-9 sm:pl-10 pr-3 sm:pr-4 py-2 sm:py-2.5 md:py-3 bg-bg-tertiary border border-text-tertiary rounded-md text-text-primary placeholder-text-tertiary focus:outline-none focus:border-accent transition-colors text-sm sm:text-base relative z-0"
                     style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}
                     maxLength={50}
                     autoFocus

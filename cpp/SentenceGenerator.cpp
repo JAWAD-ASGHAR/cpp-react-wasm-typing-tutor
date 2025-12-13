@@ -2,13 +2,15 @@
 #include <vector>
 #include <random>
 #include <sstream>
+#include <stdexcept>
 using namespace std;
 
 #include "TextGenerator.cpp"
+#include "Word.cpp"
 
 class SentenceGenerator : public TextGenerator {
 private:
-    vector<string> sentences;  
+    vector<Word> sentences;  
 
 public:
     SentenceGenerator();
@@ -16,7 +18,7 @@ public:
 };
 
 SentenceGenerator::SentenceGenerator() {
-    sentences = {
+    vector<string> sentenceStrings = {
         "The quick brown fox jumps over the lazy dog.",
         "I like to read books in the quiet room.",
         "The sun shines bright in the blue sky.",
@@ -48,26 +50,52 @@ SentenceGenerator::SentenceGenerator() {
         "He finds joy in simple things.",
         "They share food with happy friends."
     };
+    
+    sentences.clear();
+    for (const string& sentenceStr : sentenceStrings) {
+        sentences.push_back(Word(sentenceStr, "sentence"));
+    }
 }
 
 string SentenceGenerator::generateText(int count) {
-    if (count <= 0 || sentences.empty()) {
+    try {
+        if (count <= 0) {
+            throw invalid_argument("Sentence count must be positive");
+        }
+        
+        if (sentences.empty()) {
+            throw runtime_error("Sentence list is empty");
+        }
+
+        random_device rd;
+        mt19937 gen(rd());
+        uniform_int_distribution<> dis(0, sentences.size() - 1);
+
+        ostringstream result;
+        for (int i = 0; i < count; i++) {
+            if (i > 0) {
+                result << " ";
+            }
+            int randomIndex = dis(gen);
+            if (randomIndex < 0 || randomIndex >= sentences.size()) {
+                throw out_of_range("Invalid sentence index");
+            }
+            Word selectedSentence = sentences[randomIndex];
+            if (!selectedSentence.isValid()) {
+                throw runtime_error("Invalid sentence object");
+            }
+            result << selectedSentence.getText();
+        }
+
+        return result.str();
+    } catch (const invalid_argument& e) {
+        return "";
+    } catch (const runtime_error& e) {
+        return "";
+    } catch (const out_of_range& e) {
+        return "";
+    } catch (...) {
         return "";
     }
-
-    random_device rd;
-    mt19937 gen(rd());
-    uniform_int_distribution<> dis(0, sentences.size() - 1);
-
-    ostringstream result;
-    for (int i = 0; i < count; i++) {
-        if (i > 0) {
-            result << " ";
-        }
-        int randomIndex = dis(gen);
-        result << sentences[randomIndex];
-    }
-
-    return result.str();
 }
 
