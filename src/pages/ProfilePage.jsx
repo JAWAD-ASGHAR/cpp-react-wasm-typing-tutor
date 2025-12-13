@@ -19,6 +19,8 @@ export default function ProfilePage() {
   const [bestScore, setBestScore] = useState(null);
   const [isOwnProfile, setIsOwnProfile] = useState(false);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [isSettingUsername, setIsSettingUsername] = useState(false);
+  const [newUsername, setNewUsername] = useState('');
 
   useEffect(() => {
     const savedUsername = localStorage.getItem('typingTutor_username');
@@ -133,6 +135,21 @@ export default function ProfilePage() {
       await fetchUserData(trimmed);
     } else {
       setIsEditingUsername(false);
+    }
+  };
+
+  const handleSetNewUsername = async () => {
+    const trimmed = newUsername.trim();
+    if (trimmed) {
+      localStorage.setItem('typingTutor_username', trimmed);
+      setUsername(trimmed);
+      setEditValue(trimmed);
+      setNewUsername('');
+      setIsSettingUsername(false);
+      
+      navigate(`/profile/${encodeURIComponent(trimmed)}`, { replace: true });
+      
+      await fetchUserData(trimmed);
     }
   };
 
@@ -588,8 +605,66 @@ export default function ProfilePage() {
                 Loading profile...
               </div>
             ) : !username ? (
-              <div className="text-center text-text-secondary py-12">
-                Please set a username to view your profile
+              <div className="text-center py-12">
+                {!isSettingUsername ? (
+                  <div className="space-y-4">
+                    <p className="text-text-secondary mb-6">
+                      Please set a username to view your profile
+                    </p>
+                    <button
+                      onClick={() => setIsSettingUsername(true)}
+                      className="px-6 py-3 bg-accent text-bg-primary rounded-md font-semibold hover:bg-[#f5c842] transition-colors"
+                    >
+                      Set Username
+                    </button>
+                  </div>
+                ) : (
+                  <div className="max-w-md mx-auto space-y-4">
+                    <p className="text-text-secondary mb-4">
+                      Enter your username to get started
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <div className="relative flex-1">
+                        <FiUser className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary w-5 h-5 z-10 pointer-events-none" />
+                        <input
+                          type="text"
+                          value={newUsername}
+                          onChange={(e) => setNewUsername(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleSetNewUsername();
+                            if (e.key === 'Escape') {
+                              setIsSettingUsername(false);
+                              setNewUsername('');
+                            }
+                          }}
+                          placeholder="Enter your username"
+                          className="w-full pl-10 pr-3 py-2.5 bg-bg-tertiary border border-text-tertiary rounded-md text-text-primary placeholder-text-tertiary focus:outline-none focus:border-accent transition-colors"
+                          maxLength={50}
+                          autoFocus
+                        />
+                      </div>
+                      <button
+                        onClick={handleSetNewUsername}
+                        disabled={!newUsername.trim()}
+                        className="px-4 py-2.5 bg-accent text-bg-primary rounded-md font-semibold hover:bg-[#f5c842] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                      >
+                        <FiCheck className="w-5 h-5" />
+                      </button>
+                      <button
+                        onClick={() => {
+                          setIsSettingUsername(false);
+                          setNewUsername('');
+                        }}
+                        className="px-4 py-2.5 bg-bg-tertiary border border-text-tertiary rounded-md text-text-primary hover:bg-bg-primary transition-colors flex items-center gap-2"
+                      >
+                        <FiX className="w-5 h-5" />
+                      </button>
+                    </div>
+                    <p className="text-xs text-text-tertiary">
+                      {newUsername.length}/50 characters
+                    </p>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="space-y-6">
