@@ -1,13 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { loadWasm } from '../wasmLoader';
-import { FiRefreshCw, FiClock, FiTarget, FiTrendingUp, FiAward } from 'react-icons/fi';
+import { FiRefreshCw, FiClock, FiTarget, FiTrendingUp, FiAward, FiType } from 'react-icons/fi';
 import { FaRegKeyboard } from 'react-icons/fa6';
 import NameInputModal from '../components/NameInputModal';
 import UsernameButton from '../components/UsernameButton';
 import { supabase, isLeaderboardEnabled } from '../lib/supabase';
 
-// Generator type constants matching C++ enum
 const GENERATOR_TYPES = {
   RANDOM_WORDS: 0,
   SENTENCES: 1,
@@ -41,28 +40,25 @@ export default function TypingTest() {
   const inputRef = useRef(null);
   const textContainerRef = useRef(null);
 
-  // Helper function to get appropriate count based on generator type
   const getTextCount = (type) => {
     switch (type) {
       case GENERATOR_TYPES.SENTENCES:
-        return 3; // 3 sentences is a good length for typing test
+        return 3;
       case GENERATOR_TYPES.MIXED_CASE:
-        return 25; // Same as random words
+        return 25;
       case GENERATOR_TYPES.RANDOM_WORDS:
       default:
-        return 25; // 25 words is standard
+        return 25;
     }
   };
 
   useEffect(() => {
     loadWasm().then((wasmFunctions) => {
       setWasm(wasmFunctions);
-      // Initialize generator type to random words
       wasmFunctions.setGeneratorType(GENERATOR_TYPES.RANDOM_WORDS);
     });
   }, []);
 
-  // Update generator type when selection changes
   useEffect(() => {
     if (wasm && !isTestActive) {
       wasm.setGeneratorType(generatorType);
@@ -74,7 +70,6 @@ export default function TypingTest() {
     
     if (wasm) {
       wasm.resetSession();
-      // Ensure generator type is set before generating text
       wasm.setGeneratorType(generatorType);
     }
     setCurrentBestScore(null);
@@ -100,7 +95,6 @@ export default function TypingTest() {
     }, 100);
   };
 
-  // Global Enter key handler to start/restart test (when not active or after completion)
   useEffect(() => {
     const handleGlobalKeyDown = (e) => {
       if (e.key === 'Enter' && 
@@ -113,7 +107,6 @@ export default function TypingTest() {
         restartTest();
       }
       
-      // Tab key to restart during active test
       if (e.key === 'Tab' && 
           wasm &&
           isTestActive && 
@@ -139,7 +132,6 @@ export default function TypingTest() {
           const currentWpm = wasm.getWPM(elapsed);
           setWpm(currentWpm);
           
-          // Automatically finish test after 60 seconds
           if (elapsed >= 60) {
             finishTest();
           }
@@ -175,7 +167,6 @@ export default function TypingTest() {
   const startTest = () => {
     if (!wasm) return;
 
-    // Ensure generator type is set before generating text
     wasm.setGeneratorType(generatorType);
     const textCount = getTextCount(generatorType);
     const generatedText = wasm.generateText(textCount);
@@ -202,11 +193,8 @@ export default function TypingTest() {
 
     let typed = inputValue;
     
-    // Normalize input for mobile keyboards - remove any non-printable characters that might slip in
-    // Keep only printable characters and preserve spaces
     typed = typed.replace(/[\x00-\x1F\x7F-\x9F]/g, '');
     
-    // Limit input length to prevent overflow
     if (typed.length > targetText.length) {
       typed = typed.substring(0, targetText.length);
     }
@@ -229,7 +217,6 @@ export default function TypingTest() {
       setCorrectChars(correct);
     }
 
-    // Automatically finish test when all text is typed
     if (typed.length >= targetText.length) {
       finishTest();
     }
@@ -238,15 +225,11 @@ export default function TypingTest() {
   const handleInputChange = (e) => {
     if (!isTestActive || isTestComplete) return;
 
-    // During composition (mobile keyboard autocorrect/prediction), only update visual state
-    // Don't evaluate accuracy until composition ends
     if (isComposing) {
-      // Update visual input but don't process it yet
       setUserInput(e.target.value);
       return;
     }
 
-    // Normal processing when not composing
     processInput(e.target.value);
   };
 
@@ -256,10 +239,7 @@ export default function TypingTest() {
 
   const handleCompositionEnd = (e) => {
     setIsComposing(false);
-    // Process the final input after composition ends
-    // This ensures we get the actual characters the user typed, not intermediate autocorrect suggestions
     if (isTestActive && !isTestComplete && inputRef.current) {
-      // Use requestAnimationFrame to ensure the DOM is updated with the final value
       requestAnimationFrame(() => {
         if (inputRef.current) {
           processInput(inputRef.current.value);
@@ -269,7 +249,6 @@ export default function TypingTest() {
   };
 
   const handleInputKeyDown = (e) => {
-    // Tab key to restart during active test
     if (e.key === 'Tab' && isTestActive && !isTestComplete && wasm) {
       e.preventDefault();
       restartTest();
@@ -280,7 +259,6 @@ export default function TypingTest() {
     setIsTestActive(false);
     setIsTestComplete(true);
     
-    // Calculate final values directly from WASM or use current state
     let finalWpm = 0;
     let finalAccuracy = 100;
     let finalTime = 0;
@@ -294,7 +272,6 @@ export default function TypingTest() {
       setTimer(elapsed);
       setAccuracy(finalAccuracy);
     } else {
-      // Use current state values if test wasn't started properly
       finalWpm = Math.round(wpm);
       finalAccuracy = parseFloat(accuracy.toFixed(1));
       finalTime = parseFloat(timer.toFixed(1));
@@ -322,7 +299,6 @@ export default function TypingTest() {
         return newScore.time < existingScore.time;
       };
 
-      // Always save the score to the database
       const { error: insertError } = await supabase
         .from('leaderboard')
         .insert([
@@ -336,7 +312,6 @@ export default function TypingTest() {
         ]);
 
       if (!insertError) {
-        // Determine status by comparing with best score
         if (!queryError && existingScores && existingScores.length > 0) {
           const bestScore = existingScores.reduce((best, current) => {
             return isBetterScore(current, best) ? current : best;
@@ -460,10 +435,28 @@ export default function TypingTest() {
     restartTest();
   };
 
+  const goToHomeScreen = () => {
+    if (wasm) {
+      wasm.resetSession();
+    }
+    setTargetText('');
+    setUserInput('');
+    setIsTestActive(false);
+    setIsTestComplete(false);
+    setHasStartedTyping(false);
+    setTimer(0);
+    setAccuracy(100);
+    setWpm(0);
+    setCorrectChars(0);
+    setTotalChars(0);
+    setCurrentBestScore(null);
+    setScoreUpdateStatus(null);
+    setShowNameModal(false);
+  };
+
   const renderText = () => {
     if (!targetText) return null;
 
-    // Split text into words to preserve word boundaries
     const words = targetText.split(' ');
     let charIndex = 0;
 
@@ -493,14 +486,12 @@ export default function TypingTest() {
 
       const result = [];
       
-      // Wrap word in a span - this keeps the word together when wrapping
       result.push(
         <span key={`word-${wordIndex}`} className="inline-block">
           {wordChars}
         </span>
       );
       
-      // Add space after word (except last word) - spaces allow wrapping to next line
       if (wordIndex < words.length - 1) {
         const spaceIndex = charIndex++;
         let spaceClassName = 'inline transition-all duration-150 ease-in relative';
@@ -528,8 +519,7 @@ export default function TypingTest() {
 
   return (
     <div className="min-h-screen bg-bg-primary text-text-primary font-mono flex justify-center items-center p-3 sm:p-4 md:p-5 transition-colors duration-300">
-      <div className="max-w-[1000px] w-full flex flex-col gap-3 sm:gap-4 md:gap-5 animate-fade-in">
-        {/* Header */}
+      <div       className="max-w-[1000px] w-full flex flex-col gap-3 sm:gap-4 md:gap-5 animate-fade-in">
         <header className="flex justify-between items-center py-3 sm:py-4 md:py-5">
           <div className="flex-1 flex justify-start items-center min-w-0">
             <UsernameButton />
@@ -559,7 +549,6 @@ export default function TypingTest() {
           </div>
         </header>
 
-        {/* Main Stats Bar - Only show when typing has started */}
         {isTestActive && hasStartedTyping && (
           <div className="flex justify-center gap-3 sm:gap-4 md:gap-5 lg:gap-10 py-3 sm:py-4 md:py-5 animate-slide-down">
             <div className="flex items-center gap-1.5 sm:gap-2 text-text-secondary text-xs sm:text-sm">
@@ -583,7 +572,6 @@ export default function TypingTest() {
           </div>
         )}
 
-        {/* Generator Type Selector - Only show when test is not active */}
         {!isTestActive && (
           <div className="flex flex-col items-center gap-2 sm:gap-3 py-3 sm:py-4">
             <label className="text-[10px] sm:text-xs text-text-tertiary uppercase tracking-widest mb-0.5 sm:mb-1">
@@ -611,7 +599,6 @@ export default function TypingTest() {
           </div>
         )}
 
-        {/* Language Label */}
         {targetText && (
           <div className="text-center text-xs sm:text-sm text-text-tertiary uppercase tracking-widest -mb-2 sm:-mb-2.5 px-2">
             <span className="hidden sm:inline">{GENERATOR_LABELS[generatorType].toLowerCase()} • english</span>
@@ -621,7 +608,6 @@ export default function TypingTest() {
           </div>
         )}
 
-        {/* Text Display Area */}
         <div 
           className="bg-bg-secondary rounded-lg px-3 py-6 sm:px-4 sm:py-7 md:px-5 md:py-8 lg:px-8 lg:py-10 min-h-[150px] sm:min-h-[180px] md:min-h-[200px] flex items-center justify-center cursor-text transition-colors duration-300 relative overflow-hidden focus-within:outline focus-within:outline-2 focus-within:outline-accent focus-within:outline-offset-1 sm:focus-within:outline-offset-2"
           onClick={() => {
@@ -646,7 +632,6 @@ export default function TypingTest() {
           )}
         </div>
 
-        {/* Hidden Input */}
         <input
           ref={inputRef}
           type="text"
@@ -667,7 +652,6 @@ export default function TypingTest() {
           data-lpignore="true"
         />
 
-        {/* Controls */}
         <div className="flex justify-center items-center gap-3 sm:gap-4 py-4 sm:py-5">
           {!isTestActive && !isTestComplete && (
             <button 
@@ -723,17 +707,25 @@ export default function TypingTest() {
           )}
 
           {isTestActive && (
-            <button 
-              onClick={retry} 
-              className="p-2.5 sm:p-3 w-10 h-10 sm:w-11 sm:h-11 flex items-center justify-center bg-bg-tertiary border border-text-tertiary text-text-primary rounded-md cursor-pointer transition-all duration-200 hover:bg-bg-secondary hover:border-text-primary hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(0,0,0,0.3)] active:translate-y-0" 
-              title="Restart (Tab)"
-            >
-              <FiRefreshCw className="w-4 h-4 sm:w-5 sm:h-5" />
-            </button>
+            <>
+              <button 
+                onClick={retry} 
+                className="p-2.5 sm:p-3 w-10 h-10 sm:w-11 sm:h-11 flex items-center justify-center bg-bg-tertiary border border-text-tertiary text-text-primary rounded-md cursor-pointer transition-all duration-200 hover:bg-bg-secondary hover:border-text-primary hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(0,0,0,0.3)] active:translate-y-0" 
+                title="Restart (Tab)"
+              >
+                <FiRefreshCw className="w-4 h-4 sm:w-5 sm:h-5" />
+              </button>
+              <button 
+                onClick={goToHomeScreen} 
+                className="p-2.5 sm:p-3 w-10 h-10 sm:w-11 sm:h-11 flex items-center justify-center bg-bg-tertiary border border-text-tertiary text-text-primary rounded-md cursor-pointer transition-all duration-200 hover:bg-bg-secondary hover:border-text-primary hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(0,0,0,0.3)] active:translate-y-0" 
+                title="Change Text Type"
+              >
+                <FiType className="w-4 h-4 sm:w-5 sm:h-5" />
+              </button>
+            </>
           )}
         </div>
 
-        {/* Footer Hints */}
         <footer className="flex justify-center py-3 sm:py-4 md:py-5 mt-auto">
           <div className="text-[10px] sm:text-xs text-text-tertiary flex flex-col sm:flex-row gap-1.5 sm:gap-2 md:gap-5 text-center px-2">
             {!isTestActive && !isTestComplete && (
@@ -767,7 +759,6 @@ export default function TypingTest() {
         </footer>
       </div>
 
-      {/* Results Modal - Always shown after test, with or without username */}
       <NameInputModal
         isOpen={showNameModal}
         onClose={() => setShowNameModal(false)}

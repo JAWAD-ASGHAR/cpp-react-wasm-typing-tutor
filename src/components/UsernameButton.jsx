@@ -11,7 +11,6 @@ export default function UsernameButton() {
       setUsername(saved);
     }
     
-    // Listen for storage changes (when username is updated elsewhere)
     const handleStorageChange = (e) => {
       if (e.key === 'typingTutor_username') {
         setUsername(e.newValue || '');
@@ -22,7 +21,6 @@ export default function UsernameButton() {
     return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
-  // Truncate username for display
   const getDisplayUsername = () => {
     if (!username) return 'Set Username';
     if (username.length <= 15) return username;

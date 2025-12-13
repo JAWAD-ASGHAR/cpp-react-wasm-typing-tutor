@@ -5,39 +5,55 @@
 #include <cctype>
 using namespace std;
 
-// Include base class
 #include "TextGenerator.cpp"
 
-// MixedCaseGenerator inherits from TextGenerator - demonstrates Inheritance
 class MixedCaseGenerator : public TextGenerator {
 private:
-    vector<string> words;  // Encapsulation - private member
+    vector<string> words;  
 
 public:
     MixedCaseGenerator();
-    // Override virtual function - demonstrates Polymorphism
     string generateText(int count) override;
     
 private:
-    // Helper method - demonstrates Encapsulation
     string randomizeCase(const string& word);
 };
 
 MixedCaseGenerator::MixedCaseGenerator() {
     words = {
-        "apple", "green", "river", "monkey", "blue", "fast", "car", "laptop",
-        "computer", "keyboard", "mouse", "screen", "window", "door", "house",
-        "tree", "flower", "bird", "dog", "cat", "fish", "water", "fire",
-        "earth", "wind", "cloud", "sun", "moon", "star", "light", "dark",
-        "happy", "sad", "angry", "calm", "quiet", "loud", "big", "small",
-        "hot", "cold", "warm", "cool", "red", "yellow", "orange", "purple",
-        "black", "white", "gray", "brown", "pink", "book", "paper", "pen",
-        "pencil", "desk", "chair", "table", "phone", "music", "song", "dance",
-        "run", "walk", "jump", "fly", "swim", "eat", "drink", "sleep", "wake",
-        "think", "learn", "teach", "read", "write", "speak", "listen", "see",
-        "look", "watch", "find", "search", "create", "build", "make", "do",
-        "work", "play", "game", "fun", "time", "day", "night", "morning",
-        "evening", "week", "month", "year", "today", "tomorrow", "yesterday"
+        "apple", "green", "river", "monkey", "blue", "fast", "water", "light",
+        "happy", "quiet", "small", "warm", "black", "white", "brown", "pink",
+        "paper", "chair", "table", "phone", "music", "dance", "think", "learn",
+        "teach", "write", "speak", "watch", "build", "start", "finish", "begin",
+        "close", "open", "clean", "dirty", "fresh", "sweet", "sharp", "smooth",
+        "rough", "quick", "slow", "early", "late", "young", "old", "new",
+        "right", "left", "front", "back", "above", "below", "under", "over",
+        "after", "before", "today", "night", "morning", "evening", "week", "month",
+        "king", "queen", "peace", "brave", "smart", "funny", "kind", "calm",
+        "clear", "cloud", "earth", "wind", "ocean", "beach", "island", "forest",
+        "valley", "river", "stream", "pond", "lake", "ship", "boat", "sail",
+        "crew", "map", "path", "road", "trail", "track", "train", "bus",
+        "stop", "driver", "seat", "window", "flight", "pilot", "city", "town",
+        "street", "corner", "sign", "shop", "store", "market", "buyer", "cash",
+        "price", "sale", "offer", "deal", "brand", "model", "choice", "select",
+        "pick", "need", "want", "buy", "order", "ship", "mail", "box",
+        "crate", "plant", "tool", "gear", "bed", "pillow", "blanket", "sheet",
+        "cover", "rug", "mat", "lamp", "bulb", "fan", "broom", "mop",
+        "bucket", "trash", "bin", "can", "waste", "nature", "wild", "animal",
+        "insect", "bug", "bee", "ant", "snake", "frog", "lion", "tiger",
+        "bear", "zebra", "goat", "sheep", "cow", "bull", "horse", "rabbit",
+        "rat", "mouse", "pig", "bat", "owl", "eagle", "hawk", "crow",
+        "duck", "goose", "swan", "crane", "whale", "shark", "seal", "crab",
+        "fish", "bird", "dog", "cat", "tree", "flower", "grass", "leaf",
+        "fruit", "berry", "grain", "bread", "milk", "juice", "food", "meal",
+        "break", "lunch", "dinner", "taste", "smell", "touch", "sound", "voice",
+        "laugh", "smile", "cry", "shout", "whisper", "sing", "dance", "jump",
+        "run", "walk", "swim", "climb", "fall", "rise", "stand", "sit",
+        "sleep", "wake", "dream", "hope", "fear", "love", "hate", "like",
+        "know", "think", "feel", "see", "hear", "find", "lose", "keep",
+        "give", "take", "send", "bring", "carry", "push", "pull", "throw",
+        "catch", "drop", "break", "fix", "make", "do", "work", "play",
+        "game", "fun", "time", "day", "year", "hour", "minute", "second"
     };
 }
 

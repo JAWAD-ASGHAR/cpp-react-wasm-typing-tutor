@@ -1,12 +1,8 @@
 let wasmModule = null;
 let wasmFunctions = null;
 
-// Load Emscripten module - proper way to load C++ WebAssembly
-// This is NOT a JavaScript fallback - it's the standard Emscripten loading method
-// All business logic runs in C++ WebAssembly
 function loadEmscriptenModule() {
   return new Promise((resolve, reject) => {
-    // Check if already loaded
     if (window.Module && typeof window.Module === 'function') {
       window.Module({
         locateFile: (path) => path.endsWith('.wasm') ? '/typing.wasm' : path
@@ -14,12 +10,10 @@ function loadEmscriptenModule() {
       return;
     }
 
-    // Load Emscripten script - exposes Module as global (from C++ compilation)
     const script = document.createElement('script');
     script.src = '/typing.js';
     script.onload = () => {
       if (typeof window.Module === 'function') {
-        // Initialize C++ WebAssembly module
         window.Module({
           locateFile: (path) => path.endsWith('.wasm') ? '/typing.wasm' : path
         }).then(resolve).catch(reject);
@@ -37,10 +31,8 @@ export async function loadWasm() {
     return wasmFunctions;
   }
 
-  // Load C++ WebAssembly - pure C++ OOP, no JavaScript business logic
   wasmModule = await loadEmscriptenModule();
   
-  // Bridge C++ functions to JavaScript
   const generateTextPtr = wasmModule.cwrap("generateText", "number", ["number"]);
   const generateText = (wordCount) => {
     const ptr = generateTextPtr(wordCount);

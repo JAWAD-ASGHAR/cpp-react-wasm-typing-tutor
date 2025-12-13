@@ -8,8 +8,8 @@ export default function Profile({ isOpen, onClose, onUsernameChange }) {
   const [editValue, setEditValue] = useState('');
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [timeFilter, setTimeFilter] = useState('all'); // 'all', 'today', 'yesterday', 'week', 'month'
-  const [graphPeriod, setGraphPeriod] = useState('month'); // 'day', 'week', 'month'
+  const [timeFilter, setTimeFilter] = useState('all');
+  const [graphPeriod, setGraphPeriod] = useState('month');
   const [leaderboardPosition, setLeaderboardPosition] = useState(null);
   const [bestScore, setBestScore] = useState(null);
 
@@ -33,7 +33,6 @@ export default function Profile({ isOpen, onClose, onUsernameChange }) {
     try {
       setLoading(true);
 
-      // Fetch all sessions for this user
       const { data: sessionsData, error: sessionsError } = await supabase
         .from('leaderboard')
         .select('*')
@@ -44,7 +43,6 @@ export default function Profile({ isOpen, onClose, onUsernameChange }) {
 
       setSessions(sessionsData || []);
 
-      // Fetch leaderboard position
       const { data: allUsers, error: leaderboardError } = await supabase
         .from('leaderboard')
         .select('username, wpm, accuracy, time')
@@ -53,7 +51,6 @@ export default function Profile({ isOpen, onClose, onUsernameChange }) {
         .order('time', { ascending: true });
 
       if (!leaderboardError && allUsers) {
-        // Group by username and get best score for each
         const userMap = new Map();
         allUsers.forEach(entry => {
           const existing = userMap.get(entry.username);
@@ -72,7 +69,6 @@ export default function Profile({ isOpen, onClose, onUsernameChange }) {
         const position = sortedUsers.findIndex(u => u.username === user);
         setLeaderboardPosition(position >= 0 ? position + 1 : null);
 
-        // Get best score
         const userBest = userMap.get(user);
         if (userBest) {
           setBestScore(userBest);
@@ -151,7 +147,6 @@ export default function Profile({ isOpen, onClose, onUsernameChange }) {
     const startDate = new Date(now);
     startDate.setDate(startDate.getDate() - days);
 
-    // Group sessions by date
     const dataByDate = {};
     filtered.forEach(session => {
       const date = new Date(session.created_at);
@@ -165,7 +160,6 @@ export default function Profile({ isOpen, onClose, onUsernameChange }) {
       }
     });
 
-    // Generate labels and average values
     const labels = [];
     const wpmData = [];
     const accuracyData = [];
@@ -194,7 +188,7 @@ export default function Profile({ isOpen, onClose, onUsernameChange }) {
   const getContributionData = () => {
     const now = new Date();
     const startDate = new Date(now);
-    startDate.setDate(startDate.getDate() - 365); // Last year
+    startDate.setDate(startDate.getDate() - 365);
 
     const contributionMap = {};
     sessions.forEach(session => {
@@ -205,16 +199,12 @@ export default function Profile({ isOpen, onClose, onUsernameChange }) {
       }
     });
 
-    // Generate grid (53 weeks x 7 days)
-    // Start from today and go back 53 weeks
     const grid = [];
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
-    // Get the day of week (0 = Sunday, 6 = Saturday)
     const todayDayOfWeek = today.getDay();
     
-    // Calculate the start date (Sunday of the week that contains the date 53 weeks ago)
     const startOfGrid = new Date(today);
     startOfGrid.setDate(startOfGrid.getDate() - (53 * 7) - todayDayOfWeek);
 
@@ -290,7 +280,6 @@ export default function Profile({ isOpen, onClose, onUsernameChange }) {
         </div>
         <div className="overflow-x-auto">
           <svg width={width} height={height} className="min-w-full">
-            {/* Grid lines */}
             {[0, 0.25, 0.5, 0.75, 1].map((ratio, i) => (
               <g key={i}>
                 <line
@@ -314,14 +303,12 @@ export default function Profile({ isOpen, onClose, onUsernameChange }) {
                 </text>
               </g>
             ))}
-            {/* WPM line */}
             <polyline
               points={pointsWpm}
               fill="none"
               stroke="#e2b714"
               strokeWidth="2"
             />
-            {/* Accuracy line (scaled) */}
             <polyline
               points={pointsAccuracy}
               fill="none"
@@ -353,7 +340,6 @@ export default function Profile({ isOpen, onClose, onUsernameChange }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4 overflow-y-auto">
       <div className="bg-bg-secondary rounded-lg max-w-6xl w-full max-h-[90vh] flex flex-col shadow-xl my-auto">
-        {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-text-tertiary">
           <div className="flex items-center gap-4">
             <FiUser className="text-accent text-2xl" />
@@ -414,7 +400,6 @@ export default function Profile({ isOpen, onClose, onUsernameChange }) {
           </button>
         </div>
 
-        {/* Content */}
         <div className="flex-1 overflow-y-auto p-6">
           {loading ? (
             <div className="text-center text-text-secondary py-12">
@@ -426,7 +411,6 @@ export default function Profile({ isOpen, onClose, onUsernameChange }) {
             </div>
           ) : (
             <div className="space-y-6">
-              {/* Stats Summary */}
               {bestScore && (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="bg-bg-tertiary rounded-lg p-4 border border-text-tertiary">
@@ -444,10 +428,8 @@ export default function Profile({ isOpen, onClose, onUsernameChange }) {
                 </div>
               )}
 
-              {/* Progress Graph */}
               {renderGraph()}
 
-              {/* Contribution Graph */}
               <div className="bg-bg-secondary rounded-lg p-6 border border-text-tertiary">
                 <h3 className="text-lg font-semibold text-text-primary flex items-center gap-2 mb-4">
                   <FiCalendar className="text-accent" />
@@ -481,7 +463,6 @@ export default function Profile({ isOpen, onClose, onUsernameChange }) {
                 </div>
               </div>
 
-              {/* Session History */}
               <div className="bg-bg-secondary rounded-lg p-6 border border-text-tertiary">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-semibold text-text-primary flex items-center gap-2">

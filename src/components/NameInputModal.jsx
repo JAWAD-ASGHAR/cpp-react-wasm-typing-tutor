@@ -33,7 +33,6 @@ export default function NameInputModal({ isOpen, onClose, onSubmit, wpm, accurac
       <div className="bg-bg-secondary rounded-lg max-w-md w-full p-4 sm:p-5 md:p-6 shadow-xl my-auto mx-2 sm:mx-4">
         <h2 className="text-xl sm:text-2xl font-bold text-text-primary mb-2">Test Complete!</h2>
 
-        {/* Score Display */}
         <div className="bg-bg-tertiary rounded-lg p-3 sm:p-4 mb-4 sm:mb-5 md:mb-6 flex items-center justify-around gap-2 sm:gap-4">
           <div className="text-center flex-1">
             <div className="text-accent text-xl sm:text-2xl font-bold">{Math.round(wpm)}</div>
@@ -49,7 +48,6 @@ export default function NameInputModal({ isOpen, onClose, onSubmit, wpm, accurac
           </div>
         </div>
 
-        {/* Status Notifications */}
         {hasUsername && scoreUpdateStatus === 'improved' && currentBestScore !== null && (
           <div className="mb-4 sm:mb-5 md:mb-6 p-3 sm:p-4 bg-accent/20 border border-accent rounded-lg">
             <p className="text-accent text-center font-semibold text-xs sm:text-sm">
@@ -91,7 +89,6 @@ export default function NameInputModal({ isOpen, onClose, onSubmit, wpm, accurac
           </div>
         )}
 
-        {/* Username Input - Only show if no username */}
         {!hasUsername ? (
           <>
             <p className="text-text-secondary mb-4 sm:mb-5 md:mb-6 text-sm sm:text-base">

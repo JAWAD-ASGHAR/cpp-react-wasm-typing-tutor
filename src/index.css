@@ -25,7 +25,6 @@ code {
 }
 
 @layer utilities {
-  /* Custom scrollbar */
   ::-webkit-scrollbar {
     width: 8px;
     height: 8px;
@@ -44,13 +43,11 @@ code {
     background: #72757e;
   }
 
-  /* Selection */
   ::selection {
     background: rgba(226, 183, 20, 0.3);
     color: #e2b714;
   }
 
-  /* Character current cursor effect */
   .char.current::before {
     content: '';
     @apply absolute left-0 top-0 bottom-0 w-0.5;

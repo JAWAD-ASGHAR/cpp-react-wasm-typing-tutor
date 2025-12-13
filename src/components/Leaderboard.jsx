@@ -20,8 +20,6 @@ export default function Leaderboard({ isOpen, onClose }) {
         throw new Error('Leaderboard is not configured. Please check your .env file.');
       }
       
-      // Fetch all entries (we'll filter for best per user)
-      // Note: For large datasets, consider using a database view or function
       const { data, error } = await supabase
         .from('leaderboard')
         .select('*')
@@ -29,21 +27,16 @@ export default function Leaderboard({ isOpen, onClose }) {
 
       if (error) throw error;
 
-      // Helper function to compare scores: WPM > Accuracy > Time (lower is better for time)
       const isBetterScore = (newScore, existingScore) => {
-        // Primary: WPM (higher is better)
         if (newScore.wpm > existingScore.wpm) return true;
         if (newScore.wpm < existingScore.wpm) return false;
         
-        // Secondary: Accuracy (higher is better)
         if (newScore.accuracy > existingScore.accuracy) return true;
         if (newScore.accuracy < existingScore.accuracy) return false;
         
-        // Tertiary: Time (lower is better)
         return newScore.time < existingScore.time;
       };
 
-      // Group by username and get best score for each user
       const userMap = new Map();
       
       data?.forEach(entry => {
@@ -53,14 +46,10 @@ export default function Leaderboard({ isOpen, onClose }) {
         }
       });
 
-      // Convert to array, sort by WPM > Accuracy > Time, and get top 100 users
       const topUsers = Array.from(userMap.values())
         .sort((a, b) => {
-          // Primary: WPM (descending)
           if (b.wpm !== a.wpm) return b.wpm - a.wpm;
-          // Secondary: Accuracy (descending)
           if (b.accuracy !== a.accuracy) return b.accuracy - a.accuracy;
-          // Tertiary: Time (ascending - lower is better)
           return a.time - b.time;
         })
         .slice(0, 100);
@@ -69,7 +58,6 @@ export default function Leaderboard({ isOpen, onClose }) {
     } catch (error) {
       console.error('Error fetching leaderboard:', error);
       setLeaderboard([]);
-      // Show error message to user
       if (error.message) {
         alert(`Leaderboard error: ${error.message}`);
       }
@@ -83,7 +71,6 @@ export default function Leaderboard({ isOpen, onClose }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
       <div className="bg-bg-secondary rounded-lg max-w-4xl w-full max-h-[90vh] flex flex-col shadow-xl">
-        {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-text-tertiary">
           <h2 className="text-2xl font-bold text-text-primary flex items-center gap-2">
             <FiAward className="text-accent" />
@@ -97,7 +84,6 @@ export default function Leaderboard({ isOpen, onClose }) {
           </button>
         </div>
 
-        {/* Leaderboard Content */}
         <div className="flex-1 overflow-y-auto p-6">
           {loading ? (
             <div className="text-center text-text-secondary py-12">

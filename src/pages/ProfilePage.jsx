@@ -25,7 +25,6 @@ export default function ProfilePage() {
     const profileUsername = urlUsername ? decodeURIComponent(urlUsername) : savedUsername;
     
     if (profileUsername) {
-      // Reset state when username changes
       setSessions([]);
       setLeaderboardPosition(null);
       setBestScore(null);
@@ -39,7 +38,6 @@ export default function ProfilePage() {
     }
   }, [urlUsername]);
 
-  // Listen for localStorage changes (when username is updated from another tab/component)
   useEffect(() => {
     const handleStorageChange = (e) => {
       if (e.key === 'typingTutor_username' && e.newValue) {
@@ -130,10 +128,8 @@ export default function ProfilePage() {
       setEditValue(trimmed);
       setIsEditingUsername(false);
       
-      // Navigate first, then fetch data
       navigate(`/profile/${encodeURIComponent(trimmed)}`, { replace: true });
       
-      // Ensure data is reloaded after navigation
       await fetchUserData(trimmed);
     } else {
       setIsEditingUsername(false);
@@ -213,7 +209,6 @@ export default function ProfilePage() {
         accuracy = parseFloat((dataByDate[dateKey].accuracy.reduce((a, b) => a + b, 0) / dataByDate[dateKey].accuracy.length).toFixed(1));
       }
       
-      // Format date label based on period
       let label = dateKey;
       if (graphPeriod === 'day') {
         label = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
@@ -235,16 +230,14 @@ export default function ProfilePage() {
   };
 
   const getContributionData = () => {
-    // Normalize date to just the date part (no time) for comparison
     const normalizeDate = (date) => {
       const d = new Date(date);
       d.setHours(0, 0, 0, 0);
       return d.toISOString().split('T')[0];
     };
 
-    // Get start and end of selected year
-    const yearStart = new Date(selectedYear, 0, 1); // January 1st
-    const yearEnd = new Date(selectedYear, 11, 31, 23, 59, 59); // December 31st
+    const yearStart = new Date(selectedYear, 0, 1);
+    const yearEnd = new Date(selectedYear, 11, 31, 23, 59, 59);
     yearStart.setHours(0, 0, 0, 0);
     yearEnd.setHours(23, 59, 59, 999);
 
@@ -253,30 +246,25 @@ export default function ProfilePage() {
       const sessionDate = new Date(session.created_at);
       sessionDate.setHours(0, 0, 0, 0);
       
-      // Only include sessions from the selected year
       if (sessionDate >= yearStart && sessionDate <= yearEnd) {
         const dateKey = normalizeDate(sessionDate);
         contributionMap[dateKey] = (contributionMap[dateKey] || 0) + 1;
       }
     });
 
-    // Generate grid for the selected year (53 weeks)
     const grid = [];
     const monthLabels = [];
     const yearStartDate = new Date(selectedYear, 0, 1);
     yearStartDate.setHours(0, 0, 0, 0);
-    const startDayOfWeek = yearStartDate.getDay(); // 0 = Sunday, 6 = Saturday
+    const startDayOfWeek = yearStartDate.getDay();
     
-    // Start from Sunday of the week that contains January 1st
     const startOfGrid = new Date(yearStartDate);
     startOfGrid.setDate(startOfGrid.getDate() - startDayOfWeek);
     startOfGrid.setHours(0, 0, 0, 0);
 
-    // Track months for labels
     let lastMonth = -1;
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-    // Generate 53 weeks (to cover the full year)
     for (let week = 0; week < 53; week++) {
       const weekData = [];
       let weekHasYearData = false;
@@ -286,21 +274,18 @@ export default function ProfilePage() {
         date.setDate(date.getDate() + (week * 7) + day);
         date.setHours(0, 0, 0, 0);
         
-        // Check if this is the first day of a new month (for labels)
         const currentMonth = date.getMonth();
         if (day === 0 && currentMonth !== lastMonth && date >= yearStart && date <= yearEnd) {
           monthLabels.push({ week: week, month: monthNames[currentMonth] });
           lastMonth = currentMonth;
         }
         
-        // Only include dates within the selected year
         if (date >= yearStart && date <= yearEnd) {
           const dateKey = normalizeDate(date);
           const count = contributionMap[dateKey] || 0;
           weekData.push({ date: dateKey, count, month: currentMonth });
           weekHasYearData = true;
         } else {
-          // Outside the year, show empty
           weekData.push({ date: normalizeDate(date), count: 0, month: currentMonth });
         }
       }
@@ -315,12 +300,10 @@ export default function ProfilePage() {
     const startYear = 2023;
     const years = [];
     
-    // Generate years from 2023 to current year
     for (let year = startYear; year <= currentYear; year++) {
       years.push(year);
     }
     
-    // Also add any years from sessions that might be before 2023
     sessions.forEach(session => {
       const year = new Date(session.created_at).getFullYear();
       if (year < startYear && !years.includes(year)) {
@@ -328,7 +311,7 @@ export default function ProfilePage() {
       }
     });
     
-    return years.sort((a, b) => b - a); // Most recent first
+    return years.sort((a, b) => b - a);
   };
 
   const getIntensityColor = (count) => {
@@ -349,7 +332,6 @@ export default function ProfilePage() {
               <FiTrendingUp className="text-accent w-4 h-4 sm:w-5 sm:h-5" />
               Progress Over Time
             </h3>
-            {/* Desktop: Tabs, Mobile: Dropdown */}
             <div className="hidden sm:flex gap-2">
               {['day', 'week', 'month'].map(period => (
                 <button
@@ -365,7 +347,6 @@ export default function ProfilePage() {
                 </button>
               ))}
             </div>
-            {/* Mobile Dropdown */}
             <select
               value={graphPeriod}
               onChange={(e) => setGraphPeriod(e.target.value)}
@@ -385,7 +366,6 @@ export default function ProfilePage() {
       );
     }
 
-    // Custom tooltip
     const CustomTooltip = ({ active, payload }) => {
       if (active && payload && payload.length && payload[0]?.payload) {
         const data = payload[0].payload;
@@ -410,7 +390,6 @@ export default function ProfilePage() {
               <FiTrendingUp className="text-accent" />
               Progress Over Time
             </h3>
-            {/* Desktop: Tabs, Mobile: Dropdown */}
             <div className="hidden sm:flex gap-2">
               {['day', 'week', 'month'].map(period => (
                 <button
@@ -426,7 +405,6 @@ export default function ProfilePage() {
                 </button>
               ))}
             </div>
-            {/* Mobile Dropdown */}
             <select
               value={graphPeriod}
               onChange={(e) => setGraphPeriod(e.target.value)}
@@ -508,13 +486,11 @@ export default function ProfilePage() {
 
   const filteredSessions = getFilteredSessions();
   const { grid: contributionGrid, monthLabels } = getContributionData();
-  // Show only Mon, Wed, Fri (indices 1, 3, 5)
   const dayLabels = ['', 'Mon', '', 'Wed', '', 'Fri', ''];
 
   return (
     <div className="min-h-screen bg-bg-primary text-text-primary font-mono">
       <div className="max-w-6xl mx-auto p-3 sm:p-4 md:p-5">
-        {/* Header */}
         <header className="flex justify-between items-center py-3 sm:py-4 md:py-5 mb-4 sm:mb-5 md:mb-6">
           <div className="flex-1 flex justify-start items-center min-w-0">
             <Link
@@ -547,7 +523,6 @@ export default function ProfilePage() {
           </div>
         </header>
 
-        {/* Profile Content */}
         <div className="bg-bg-secondary rounded-lg border border-text-tertiary">
           <div className="p-4 sm:p-5 md:p-6 border-b border-text-tertiary">
             <div className="flex items-center justify-between gap-4">
@@ -658,10 +633,8 @@ export default function ProfilePage() {
                   <div className="flex gap-4">
                     <div className="overflow-x-auto flex-1">
                       <div style={{ minWidth: '750px' }}>
-                        {/* Month labels row */}
                         <div className="flex mb-1 relative" style={{ paddingLeft: '28px', height: '16px' }}>
                           {monthLabels.map((label, idx) => {
-                            // Calculate position: 28px (day labels) + week * 16px (12px cell + 4px gap)
                             const leftPos = 28 + label.week * 16;
                             return (
                               <div
@@ -676,9 +649,7 @@ export default function ProfilePage() {
                             );
                           })}
                         </div>
-                        {/* Grid with day labels */}
                         <div className="flex gap-1">
-                          {/* Day of week labels */}
                           <div className="flex flex-col gap-1 mr-1">
                             {dayLabels.map((day, dayIndex) => (
                               <div
@@ -694,7 +665,6 @@ export default function ProfilePage() {
                               </div>
                             ))}
                           </div>
-                          {/* Heatmap grid */}
                           <div className="flex gap-1">
                             {contributionGrid.map((week, weekIndex) => (
                               <div key={weekIndex} className="flex flex-col gap-1">
@@ -718,7 +688,6 @@ export default function ProfilePage() {
                         </div>
                       </div>
                     </div>
-                    {/* Year selector buttons - GitHub style (vertical on right) */}
                     <div className="flex flex-col gap-1 items-start">
                       {getAvailableYears().map(year => (
                         <button
@@ -743,7 +712,6 @@ export default function ProfilePage() {
                       <FiBarChart2 className="text-accent w-4 h-4 sm:w-5 sm:h-5" />
                       Session History
                     </h3>
-                    {/* Desktop: Tabs, Mobile: Dropdown */}
                     <div className="hidden sm:flex gap-2 flex-wrap">
                       {['all time', 'today', 'week', 'month', 'year'].map(filter => (
                         <button
@@ -759,7 +727,6 @@ export default function ProfilePage() {
                         </button>
                       ))}
                     </div>
-                    {/* Mobile Dropdown */}
                     <select
                       value={timeFilter === 'all' ? 'all time' : timeFilter}
                       onChange={(e) => setTimeFilter(e.target.value)}

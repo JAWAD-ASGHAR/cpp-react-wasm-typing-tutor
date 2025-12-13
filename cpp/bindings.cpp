@@ -4,7 +4,6 @@
 #include <cstdlib>
 using namespace std;
 
-// Include class definitions from their .cpp files
 #include "TextGenerator.cpp"
 #include "RandomWordGenerator.cpp"
 #include "SentenceGenerator.cpp"
@@ -12,12 +11,10 @@ using namespace std;
 #include "TypingSession.cpp"
 #include "Timer.cpp"
 
-// Global instances - using base class pointer for Polymorphism
-TextGenerator* textGen = nullptr;  // Polymorphism - base class pointer
+TextGenerator* textGen = nullptr;
 TypingSession* session = nullptr;
 Timer* timer = nullptr;
 
-// Generator type enum
 enum GeneratorType {
     RANDOM_WORDS = 0,
     SENTENCES = 1,
@@ -25,16 +22,13 @@ enum GeneratorType {
 };
 
 extern "C" {
-    // Switch generator type - demonstrates Polymorphism
     EMSCRIPTEN_KEEPALIVE
     void setGeneratorType(int type) {
-        // Delete old generator if exists
         if (textGen) {
             delete textGen;
             textGen = nullptr;
         }
         
-        // Create new generator based on type - Polymorphism in action
         switch (type) {
             case RANDOM_WORDS:
                 textGen = new RandomWordGenerator();
@@ -52,11 +46,9 @@ extern "C" {
     
     EMSCRIPTEN_KEEPALIVE
     char* generateText(int wordCount) {
-        // Default to random words if not set
         if (!textGen) {
             textGen = new RandomWordGenerator();
         }
-        // Polymorphism - calling virtual function through base class pointer
         string text = textGen->generateText(wordCount);
         char* result = (char*)malloc(text.length() + 1);
         strcpy(result, text.c_str());

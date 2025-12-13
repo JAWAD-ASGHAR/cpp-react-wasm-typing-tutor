@@ -68,7 +68,6 @@ export default function LeaderboardPage() {
   return (
     <div className="min-h-screen bg-bg-primary text-text-primary font-mono">
       <div className="max-w-6xl mx-auto p-5">
-        {/* Header */}
         <header className="flex justify-between items-center py-5 mb-6">
           <div className="flex-1 flex justify-start items-center">
             <UsernameButton />
@@ -95,7 +94,6 @@ export default function LeaderboardPage() {
           </div>
         </header>
 
-        {/* Leaderboard Content */}
         <div className="bg-bg-secondary rounded-lg border border-text-tertiary">
           <div className="p-6 border-b border-text-tertiary">
             <h2 className="text-2xl font-bold text-text-primary flex items-center gap-2">

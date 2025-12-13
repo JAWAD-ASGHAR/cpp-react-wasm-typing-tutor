@@ -1,11 +1,8 @@
 #!/bin/bash
 
-# Build script for Typing Practice Application
-
 echo "Building Typing Practice Application..."
 echo ""
 
-# Check if Emscripten is available
 if ! command -v emcc &> /dev/null; then
     echo "Error: Emscripten (emcc) not found!"
     echo "Please activate Emscripten environment first:"

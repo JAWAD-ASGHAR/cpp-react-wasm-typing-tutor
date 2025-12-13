@@ -4,69 +4,52 @@
 #include <sstream>
 using namespace std;
 
-// Include base class
 #include "TextGenerator.cpp"
 
-// RandomWordGenerator inherits from TextGenerator - demonstrates Inheritance
 class RandomWordGenerator : public TextGenerator {
 private:
-    vector<string> words;  // Encapsulation - private member
+    vector<string> words;  
 
 public:
     RandomWordGenerator();
-    // Override virtual function - demonstrates Polymorphism
     string generateText(int count) override;
 };
 
 RandomWordGenerator::RandomWordGenerator() {
     words = {
-        "apple", "green", "river", "monkey", "blue", "fast", "car", "laptop",
-        "computer", "keyboard", "mouse", "screen", "window", "door", "house",
-        "tree", "flower", "bird", "dog", "cat", "fish", "water", "fire",
-        "earth", "wind", "cloud", "sun", "moon", "star", "light", "dark",
-        "happy", "sad", "angry", "calm", "quiet", "loud", "big", "small",
-        "hot", "cold", "warm", "cool", "red", "yellow", "orange", "purple",
-        "black", "white", "gray", "brown", "pink", "book", "paper", "pen",
-        "pencil", "desk", "chair", "table", "phone", "music", "song", "dance",
-        "run", "walk", "jump", "fly", "swim", "eat", "drink", "sleep", "wake",
-        "think", "learn", "teach", "read", "write", "speak", "listen", "see",
-        "look", "watch", "find", "search", "create", "build", "make", "do",
-        "work", "play", "game", "fun", "time", "day", "night", "morning",
-        "evening", "week", "month", "year", "today", "tomorrow", "yesterday",
-        "king", "queen", "prince", "princess", "castle", "knight", "sword", "shield", "battle", "war",
-        "peace", "hero", "villain", "dragon", "giant", "elf", "dwarf", "orc", "wizard", "witch",
-        "magic", "spell", "potion", "forest", "mountain", "valley", "island", "beach", "ocean", "sea",
-        "lake", "riverbank", "stream", "pond", "harbor", "ship", "boat", "raft", "sail", "anchor",
-        "crew", "captain", "pirate", "treasure", "map", "compass", "journey", "quest", "adventure", "legend",
-        "story", "tale", "myth", "fable", "heroine", "destiny", "fate", "fortune", "luck", "chance",
-        "risk", "danger", "trap", "escape", "secret", "mystery", "clue", "evidence", "case", "detective",
-        "crime", "law", "justice", "judge", "jury", "trial", "court", "sentence", "prison", "cell",
-        "guard", "warden", "lock", "key", "gate", "wall", "tower", "bridge", "road", "path",
-        "trail", "route", "track", "station", "train", "engine", "carriage", "ticket", "platform", "schedule",
-        "bus", "stop", "route", "driver", "passenger", "seat", "window", "aisle", "flight", "airplane",
-        "pilot", "crew", "attendant", "airport", "runway", "terminal", "baggage", "claim", "customs", "passport",
-        "border", "nation", "country", "state", "city", "village", "town", "capital", "street", "road",
-        "avenue", "boulevard", "alley", "lane", "block", "corner", "sign", "signal", "crosswalk", "intersection",
-        "traffic", "jam", "highway", "freeway", "bridge", "tunnel", "overpass", "underpass", "exit", "entrance",
-        "mall", "shop", "store", "market", "stall", "vendor", "buyer", "customer", "cash", "credit",
-        "checkout", "counter", "register", "receipt", "bag", "cart", "basket", "goods", "product", "item",
-        "label", "price", "sale", "discount", "offer", "coupon", "deal", "bargain", "brand", "model",
-        "make", "type", "version", "option", "variant", "choice", "select", "pick", "prefer", "wish",
-        "need", "want", "buy", "order", "purchase", "deliver", "ship", "mail", "package", "parcel",
-        "box", "crate", "container", "storage", "warehouse", "factory", "plant", "machine", "tool", "equipment",
-        "gear", "device", "gadget", "appliance", "furniture", "sofa", "couch", "bed", "pillow", "blanket",
-        "sheet", "cover", "curtain", "rug", "mat", "lamp", "bulb", "fan", "heater", "air",
-        "conditioner", "filter", "cleaner", "vacuum", "broom", "mop", "bucket", "dustpan", "trash", "bin",
-        "basket", "can", "recycle", "waste", "garbage", "dump", "landfill", "environment", "nature", "wild",
-        "animal", "insect", "bug", "bee", "ant", "spider", "snake", "frog", "lizard", "reptile",
-        "mammal", "lion", "tiger", "bear", "zebra", "giraffe", "elephant", "rhino", "hippo", "buffalo",
-        "wolf", "fox", "deer", "moose", "elk", "goat", "sheep", "cow", "bull", "horse",
-        "donkey", "mule", "rabbit", "rat", "mouse", "hamster", "guinea", "pig", "bat", "owl",
-        "eagle", "hawk", "falcon", "crow", "sparrow", "pigeon", "seagull", "duck", "goose", "turkey",
-        "chicken", "rooster", "peacock", "penguin", "ostrich", "emu", "kiwi", "parrot", "canary", "finch",
-        "swan", "crane", "stork", "heron", "flamingo", "ibis", "egret", "woodpecker", "kingfisher", "hummingbird",
-        "swallow", "nightingale", "whale", "dolphin", "shark", "seal", "otter", "walrus", "manatee", "narwhal",
-        "octopus", "squid", "crab", "lobster", "shrimp", "coral", "reef", "algae", "kelp", "plankton"
+        "apple", "green", "river", "monkey", "blue", "fast", "water", "light",
+        "happy", "quiet", "small", "warm", "black", "white", "brown", "pink",
+        "paper", "chair", "table", "phone", "music", "dance", "think", "learn",
+        "teach", "write", "speak", "watch", "build", "start", "finish", "begin",
+        "close", "open", "clean", "dirty", "fresh", "sweet", "sharp", "smooth",
+        "rough", "quick", "slow", "early", "late", "young", "old", "new",
+        "right", "left", "front", "back", "above", "below", "under", "over",
+        "after", "before", "today", "night", "morning", "evening", "week", "month",
+        "king", "queen", "peace", "brave", "smart", "funny", "kind", "calm",
+        "clear", "cloud", "earth", "wind", "ocean", "beach", "island", "forest",
+        "valley", "river", "stream", "pond", "lake", "ship", "boat", "sail",
+        "crew", "map", "path", "road", "trail", "track", "train", "bus",
+        "stop", "driver", "seat", "window", "flight", "pilot", "city", "town",
+        "street", "corner", "sign", "shop", "store", "market", "buyer", "cash",
+        "price", "sale", "offer", "deal", "brand", "model", "choice", "select",
+        "pick", "need", "want", "buy", "order", "ship", "mail", "box",
+        "crate", "plant", "tool", "gear", "bed", "pillow", "blanket", "sheet",
+        "cover", "rug", "mat", "lamp", "bulb", "fan", "broom", "mop",
+        "bucket", "trash", "bin", "can", "waste", "nature", "wild", "animal",
+        "insect", "bug", "bee", "ant", "snake", "frog", "lion", "tiger",
+        "bear", "zebra", "goat", "sheep", "cow", "bull", "horse", "rabbit",
+        "rat", "mouse", "pig", "bat", "owl", "eagle", "hawk", "crow",
+        "duck", "goose", "swan", "crane", "whale", "shark", "seal", "crab",
+        "fish", "bird", "dog", "cat", "tree", "flower", "grass", "leaf",
+        "fruit", "berry", "grain", "bread", "milk", "juice", "food", "meal",
+        "break", "lunch", "dinner", "taste", "smell", "touch", "sound", "voice",
+        "laugh", "smile", "cry", "shout", "whisper", "sing", "dance", "jump",
+        "run", "walk", "swim", "climb", "fall", "rise", "stand", "sit",
+        "sleep", "wake", "dream", "hope", "fear", "love", "hate", "like",
+        "know", "think", "feel", "see", "hear", "find", "lose", "keep",
+        "give", "take", "send", "bring", "carry", "push", "pull", "throw",
+        "catch", "drop", "break", "fix", "make", "do", "work", "play",
+        "game", "fun", "time", "day", "year", "hour", "minute", "second"
     };
 }
 
