@@ -50,6 +50,12 @@ void Word::setText(string wordText) {
 }
 
 bool Word::isValid() const {
+    if (text.length() == 0) return false;
+    // For sentences, allow longer text (up to 200 characters)
+    if (category == "sentence") {
+        return text.length() > 0 && text.length() <= 200;
+    }
+    // For regular words, limit to 6 characters
     return text.length() > 0 && text.length() <= 6;
 }
 
