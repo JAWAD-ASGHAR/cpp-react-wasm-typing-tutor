@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { loadWasm } from '../wasmLoader';
 import { FiRefreshCw, FiClock, FiTarget, FiTrendingUp, FiAward, FiType } from 'react-icons/fi';
@@ -36,9 +36,17 @@ export default function TypingTest() {
   const [scoreUpdateStatus, setScoreUpdateStatus] = useState(null);
   const [generatorType, setGeneratorType] = useState(GENERATOR_TYPES.RANDOM_WORDS);
   const [isComposing, setIsComposing] = useState(false);
+  const [isWasmReady, setIsWasmReady] = useState(false);
+  const [isWasmLoading, setIsWasmLoading] = useState(true);
+  const [isSwitchingMode, setIsSwitchingMode] = useState(false);
   const intervalRef = useRef(null);
   const inputRef = useRef(null);
   const textContainerRef = useRef(null);
+  const isStartingRef = useRef(false);
+  const isSwitchingModeRef = useRef(false);
+  const generatorTypeRef = useRef(GENERATOR_TYPES.RANDOM_WORDS);
+  const wasmRef = useRef(null);
+  const modeSwitchTimeoutRef = useRef(null);
 
   const getTextCount = (type) => {
     switch (type) {
@@ -53,67 +61,270 @@ export default function TypingTest() {
   };
 
   useEffect(() => {
-    loadWasm().then((wasmFunctions) => {
-      setWasm(wasmFunctions);
-      wasmFunctions.setGeneratorType(GENERATOR_TYPES.RANDOM_WORDS);
-    });
+    let isMounted = true;
+    
+    // Prevent multiple loads if WASM is already loaded
+    if (wasmRef.current) {
+      console.log('[WASM] WASM already loaded, skipping reload');
+      setIsWasmReady(true);
+      setIsWasmLoading(false);
+      return;
+    }
+    
+    console.log('[WASM] Starting WASM load...');
+    setIsWasmLoading(true);
+    
+    loadWasm()
+      .then((wasmFunctions) => {
+        console.log('[WASM] WASM loaded successfully');
+        if (isMounted && !wasmRef.current) {
+          wasmRef.current = wasmFunctions;
+          setWasm(wasmFunctions);
+          try {
+            wasmFunctions.setGeneratorType(GENERATOR_TYPES.RANDOM_WORDS);
+            generatorTypeRef.current = GENERATOR_TYPES.RANDOM_WORDS;
+            console.log('[WASM] Initial generator type set to RANDOM_WORDS');
+          } catch (error) {
+            console.error('[WASM] Error setting initial generator type:', error);
+          }
+          setIsWasmReady(true);
+          setIsWasmLoading(false);
+        } else if (wasmRef.current) {
+          console.log('[WASM] WASM already loaded by another effect, skipping');
+          setIsWasmReady(true);
+          setIsWasmLoading(false);
+        }
+      })
+      .catch((error) => {
+        console.error('[WASM] Failed to load WASM:', error);
+        if (isMounted) {
+          wasmRef.current = null;
+          setIsWasmReady(false);
+          setIsWasmLoading(false);
+        }
+      });
+    
+    return () => {
+      isMounted = false;
+      // Don't clear wasmRef on unmount - keep it for remounts
+    };
   }, []);
 
+  // Keep wasmRef in sync with wasm state
   useEffect(() => {
-    if (wasm && !isTestActive) {
-      wasm.setGeneratorType(generatorType);
-    }
-  }, [generatorType, wasm, isTestActive]);
-
-  const restartTest = () => {
-    if (!wasm) return;
-    
     if (wasm) {
-      wasm.resetSession();
-      wasm.setGeneratorType(generatorType);
+      wasmRef.current = wasm;
     }
-    setCurrentBestScore(null);
-    setScoreUpdateStatus(null);
-    setShowNameModal(false);
-    
-    const textCount = getTextCount(generatorType);
-    const generatedText = wasm.generateText(textCount);
-    setTargetText(generatedText);
-    setUserInput('');
-    setIsTestActive(true);
-    setIsTestComplete(false);
-    setHasStartedTyping(false);
-    setTimer(0);
-    setAccuracy(100);
-    setWpm(0);
-    setCorrectChars(0);
-    setTotalChars(0);
-    setTimeout(() => {
-      if (inputRef.current) {
-        inputRef.current.focus();
+  }, [wasm]);
+
+  // Safety timeout to reset stuck flags
+  useEffect(() => {
+    const safetyCheck = setInterval(() => {
+      // Reset flags if they've been stuck for more than 5 seconds
+      if (isSwitchingModeRef.current) {
+        const now = Date.now();
+        if (!modeSwitchTimeoutRef.current || (now - modeSwitchTimeoutRef.current > 5000)) {
+          console.warn('[SAFETY] Resetting stuck isSwitchingModeRef flag');
+          isSwitchingModeRef.current = false;
+          setIsSwitchingMode(false);
+          if (modeSwitchTimeoutRef.current) {
+            modeSwitchTimeoutRef.current = null;
+          }
+        }
       }
-    }, 100);
-  };
+    }, 1000);
+
+    return () => clearInterval(safetyCheck);
+  }, []);
+
+  const restartTest = useCallback(async (retryCount = 0) => {
+    const MAX_RETRIES = 3;
+    console.log('[RESTART] Starting restart test', retryCount > 0 ? `(retry ${retryCount}/${MAX_RETRIES})` : '');
+    const currentWasm = wasmRef.current;
+    if (!currentWasm || !isWasmReady) {
+      console.warn('[RESTART] WASM not ready yet', { wasm: !!currentWasm, ready: isWasmReady });
+      return;
+    }
+    
+    if (isStartingRef.current || isSwitchingModeRef.current) {
+      console.warn('[RESTART] Operation in progress, ignoring duplicate call', {
+        starting: isStartingRef.current,
+        switching: isSwitchingModeRef.current
+      });
+      return;
+    }
+    
+    isStartingRef.current = true;
+    console.log('[RESTART] Flag set, proceeding with restart');
+    
+    try {
+      // Use ref to ensure we have the latest generator type
+      const currentGenType = generatorTypeRef.current;
+      console.log('[RESTART] Generator type:', currentGenType);
+      
+      // Ensure WASM is in a clean state
+      console.log('[RESTART] Resetting WASM session');
+      
+      // Use setTimeout to keep UI responsive
+      await new Promise(resolve => setTimeout(resolve, 0));
+      
+      try {
+        // Reset and set generator type with proper error handling
+        currentWasm.resetSession();
+        // Small delay to ensure reset completes
+        await new Promise(resolve => setTimeout(resolve, 20));
+        currentWasm.setGeneratorType(currentGenType);
+        // Small delay to ensure generator type is set and generator is initialized
+        await new Promise(resolve => setTimeout(resolve, 30));
+      } catch (resetError) {
+        console.error('[RESTART] Error resetting WASM:', resetError);
+        if (retryCount < MAX_RETRIES) {
+          console.log(`[RESTART] Retrying after reset error (attempt ${retryCount + 1}/${MAX_RETRIES})`);
+          isStartingRef.current = false;
+          await new Promise(resolve => setTimeout(resolve, 100));
+          return restartTest(retryCount + 1);
+        }
+        throw resetError;
+      }
+      
+      setCurrentBestScore(null);
+      setScoreUpdateStatus(null);
+      setShowNameModal(false);
+      
+      const textCount = getTextCount(currentGenType);
+      console.log('[RESTART] Generating text, count:', textCount);
+      
+      // Wait a bit longer to ensure generator is fully initialized
+      await new Promise(resolve => setTimeout(resolve, 50));
+      
+      let generatedText;
+      let attempts = 0;
+      const maxGenerateAttempts = 3;
+      
+      while (attempts < maxGenerateAttempts) {
+        try {
+          generatedText = currentWasm.generateText(textCount);
+          if (generatedText && generatedText.trim() !== '') {
+            break; // Success, exit loop
+          }
+          // If we got empty text, wait and retry
+          if (attempts < maxGenerateAttempts - 1) {
+            console.log(`[RESTART] Got empty text, retrying generation (attempt ${attempts + 1}/${maxGenerateAttempts})`);
+            await new Promise(resolve => setTimeout(resolve, 100));
+            // Reset generator before retry
+            try {
+              currentWasm.resetSession();
+              await new Promise(resolve => setTimeout(resolve, 20));
+              currentWasm.setGeneratorType(currentGenType);
+              await new Promise(resolve => setTimeout(resolve, 30));
+            } catch (resetError) {
+              console.error('[RESTART] Error resetting before retry:', resetError);
+            }
+          }
+          attempts++;
+        } catch (wasmError) {
+          console.error('[RESTART] WASM error during generateText:', wasmError);
+          attempts++;
+          if (attempts >= maxGenerateAttempts) {
+            // If we've exhausted generate attempts, fall through to outer retry
+            break;
+          }
+          // Wait before retrying generation
+          await new Promise(resolve => setTimeout(resolve, 100));
+          // Reset generator before retry
+          try {
+            currentWasm.resetSession();
+            await new Promise(resolve => setTimeout(resolve, 20));
+            currentWasm.setGeneratorType(currentGenType);
+            await new Promise(resolve => setTimeout(resolve, 30));
+          } catch (resetError) {
+            console.error('[RESTART] Error resetting before retry:', resetError);
+          }
+        }
+      }
+      
+      // Check if we got valid text after all attempts
+      if (!generatedText || generatedText.trim() === '') {
+        console.error('[RESTART] Failed to generate text after', maxGenerateAttempts, 'attempts. Generator type:', currentGenType);
+        if (retryCount < MAX_RETRIES) {
+          console.log(`[RESTART] Retrying entire operation (attempt ${retryCount + 1}/${MAX_RETRIES})`);
+          isStartingRef.current = false;
+          // Reset WASM state before retry
+          try {
+            currentWasm.resetSession();
+            await new Promise(resolve => setTimeout(resolve, 100));
+            currentWasm.setGeneratorType(currentGenType);
+            await new Promise(resolve => setTimeout(resolve, 100));
+          } catch (resetError) {
+            console.error('[RESTART] Error resetting WASM for retry:', resetError);
+          }
+          await new Promise(resolve => setTimeout(resolve, 200));
+          return restartTest(retryCount + 1);
+        }
+        isStartingRef.current = false;
+        alert('Failed to generate text. Please try again.');
+        return;
+      }
+      
+      console.log('[RESTART] Text generated successfully, length:', generatedText.length);
+      setTargetText(generatedText);
+      setUserInput('');
+      setIsTestActive(true);
+      setIsTestComplete(false);
+      setHasStartedTyping(false);
+      setTimer(0);
+      setAccuracy(100);
+      setWpm(0);
+      setCorrectChars(0);
+      setTotalChars(0);
+      
+      // Reset the flag after a short delay to allow state updates
+      setTimeout(() => {
+        isStartingRef.current = false;
+        console.log('[RESTART] Flag reset, focusing input');
+        if (inputRef.current) {
+          inputRef.current.focus();
+        }
+      }, 200);
+    } catch (error) {
+      console.error('[RESTART] Error restarting test:', error);
+      if (retryCount < MAX_RETRIES) {
+        console.log(`[RESTART] Retrying after general error (attempt ${retryCount + 1}/${MAX_RETRIES})`);
+        isStartingRef.current = false;
+        await new Promise(resolve => setTimeout(resolve, 100));
+        return restartTest(retryCount + 1);
+      }
+      isStartingRef.current = false;
+      alert('Failed to restart test. Please try again.');
+    }
+  }, [isWasmReady]);
 
   useEffect(() => {
-    const handleGlobalKeyDown = (e) => {
+      const handleGlobalKeyDown = (e) => {
+      const currentWasm = wasmRef.current;
       if (e.key === 'Enter' && 
-          wasm &&
+          currentWasm &&
+          isWasmReady &&
           e.target.tagName !== 'INPUT' && 
           e.target.tagName !== 'TEXTAREA' &&
           e.target.tagName !== 'BUTTON' &&
-          (!isTestActive || isTestComplete)) {
+          (!isTestActive || isTestComplete) &&
+          !isStartingRef.current &&
+          !isSwitchingModeRef.current) {
         e.preventDefault();
         restartTest();
       }
       
       if (e.key === 'Tab' && 
-          wasm &&
+          currentWasm &&
+          isWasmReady &&
           isTestActive && 
           !isTestComplete &&
           e.target.tagName !== 'INPUT' && 
           e.target.tagName !== 'TEXTAREA' &&
-          e.target.tagName !== 'BUTTON') {
+          e.target.tagName !== 'BUTTON' &&
+          !isStartingRef.current &&
+          !isSwitchingModeRef.current) {
         e.preventDefault();
         restartTest();
       }
@@ -121,19 +332,24 @@ export default function TypingTest() {
 
     window.addEventListener('keydown', handleGlobalKeyDown);
     return () => window.removeEventListener('keydown', handleGlobalKeyDown);
-  }, [wasm, isTestActive, isTestComplete]);
+  }, [isWasmReady, isTestActive, isTestComplete, restartTest]);
 
   useEffect(() => {
     if (isTestActive && hasStartedTyping && !isTestComplete) {
       intervalRef.current = setInterval(() => {
-        if (wasm) {
-          const elapsed = wasm.getElapsedSeconds();
-          setTimer(elapsed);
-          const currentWpm = wasm.getWPM(elapsed);
-          setWpm(currentWpm);
-          
-          if (elapsed >= 60) {
-            finishTest();
+        const currentWasm = wasmRef.current;
+        if (currentWasm) {
+          try {
+            const elapsed = currentWasm.getElapsedSeconds();
+            setTimer(elapsed);
+            const currentWpm = currentWasm.getWPM(elapsed);
+            setWpm(currentWpm);
+            
+            if (elapsed >= 60) {
+              finishTest();
+            }
+          } catch (error) {
+            console.error('Error getting timer/WPM:', error);
           }
         }
       }, 100);
@@ -149,7 +365,7 @@ export default function TypingTest() {
         clearInterval(intervalRef.current);
       }
     };
-  }, [isTestActive, hasStartedTyping, isTestComplete, wasm]);
+  }, [isTestActive, hasStartedTyping, isTestComplete]);
 
   useEffect(() => {
     if (isTestActive && textContainerRef.current) {
@@ -164,32 +380,178 @@ export default function TypingTest() {
     }
   }, [userInput.length, isTestActive]);
 
-  const startTest = () => {
-    if (!wasm) return;
-
-    wasm.setGeneratorType(generatorType);
-    const textCount = getTextCount(generatorType);
-    const generatedText = wasm.generateText(textCount);
-    setTargetText(generatedText);
-    setUserInput('');
-    setIsTestActive(true);
-    setIsTestComplete(false);
-    setHasStartedTyping(false);
-    setTimer(0);
-    setAccuracy(100);
-    setWpm(0);
-    setCorrectChars(0);
-    setTotalChars(0);
-
-    setTimeout(() => {
-      if (inputRef.current) {
-        inputRef.current.focus();
+  const startTest = useCallback(() => {
+    console.log('[START] Starting test');
+    const currentWasm = wasmRef.current;
+    if (!currentWasm || !isWasmReady) {
+      console.warn('[START] WASM not ready yet', { wasm: !!currentWasm, ready: isWasmReady });
+      return;
+    }
+    
+    if (isTestActive && !isTestComplete) {
+      console.warn('[START] Test already active, use restart instead');
+      return;
+    }
+    
+    if (isStartingRef.current || isSwitchingModeRef.current) {
+      console.warn('[START] Operation in progress, ignoring duplicate call', {
+        starting: isStartingRef.current,
+        switching: isSwitchingModeRef.current
+      });
+      return;
+    }
+    
+    isStartingRef.current = true;
+    console.log('[START] Flag set, proceeding with start');
+    
+    const generateAndStartTest = async (retryCount = 0) => {
+      const MAX_RETRIES = 3;
+      try {
+        const currentGenType = generatorTypeRef.current;
+        console.log('[START] Generator type:', currentGenType);
+        const textCount = getTextCount(currentGenType);
+        console.log('[START] Generating text, count:', textCount);
+        
+        // Use requestIdleCallback or setTimeout to keep UI responsive
+        await new Promise(resolve => setTimeout(resolve, 0));
+        
+        let generatedText;
+        try {
+          generatedText = currentWasm.generateText(textCount);
+        } catch (wasmError) {
+          console.error('[START] WASM error during generateText:', wasmError);
+          // Retry if we haven't exceeded max retries
+          if (retryCount < MAX_RETRIES) {
+            console.log(`[START] Retrying generation (attempt ${retryCount + 1}/${MAX_RETRIES})`);
+            // Reset WASM state before retry
+            try {
+              currentWasm.resetSession();
+              currentWasm.setGeneratorType(currentGenType);
+            } catch (resetError) {
+              console.error('[START] Error resetting WASM:', resetError);
+            }
+            // Wait a bit before retry
+            await new Promise(resolve => setTimeout(resolve, 100));
+            return generateAndStartTest(retryCount + 1);
+          }
+          throw wasmError;
+        }
+        
+        if (!generatedText || generatedText.trim() === '') {
+          console.error('[START] Failed to generate text. Generator type:', currentGenType);
+          // Retry if we haven't exceeded max retries
+          if (retryCount < MAX_RETRIES) {
+            console.log(`[START] Empty text, retrying (attempt ${retryCount + 1}/${MAX_RETRIES})`);
+            try {
+              currentWasm.resetSession();
+              currentWasm.setGeneratorType(currentGenType);
+            } catch (resetError) {
+              console.error('[START] Error resetting WASM:', resetError);
+            }
+            await new Promise(resolve => setTimeout(resolve, 100));
+            return generateAndStartTest(retryCount + 1);
+          }
+          isStartingRef.current = false;
+          alert('Failed to generate text. Please try again.');
+          return;
+        }
+        
+        console.log('[START] Text generated successfully, length:', generatedText.length);
+        setTargetText(generatedText);
+        setUserInput('');
+        setIsTestActive(true);
+        setIsTestComplete(false);
+        setHasStartedTyping(false);
+        setTimer(0);
+        setAccuracy(100);
+        setWpm(0);
+        setCorrectChars(0);
+        setTotalChars(0);
+        setCurrentBestScore(null);
+        setScoreUpdateStatus(null);
+        setShowNameModal(false);
+        
+        // Reset the flag after a short delay to allow state updates
+        setTimeout(() => {
+          isStartingRef.current = false;
+          console.log('[START] Flag reset, focusing input');
+          if (inputRef.current) {
+            inputRef.current.focus();
+          }
+        }, 200);
+      } catch (error) {
+        console.error('[START] Error generating text:', error);
+        isStartingRef.current = false;
+        alert('Failed to generate text. Please try again.');
       }
-    }, 100);
-  };
+    };
+    
+    try {
+      // Use ref to ensure we have the latest generator type
+      const currentGenType = generatorTypeRef.current;
+      
+      // Ensure WASM is in a clean state - wait if mode is switching
+      if (isSwitchingModeRef.current) {
+        console.log('[START] Mode switch in progress, waiting...');
+        // Wait for mode switch to complete
+        let attempts = 0;
+        const maxAttempts = 20; // 1 second max wait (20 * 50ms)
+        const checkModeSwitch = setInterval(async () => {
+          attempts++;
+          if (!isSwitchingModeRef.current) {
+            clearInterval(checkModeSwitch);
+            console.log('[START] Mode switch complete, proceeding');
+            try {
+              // Use setTimeout to keep UI responsive
+              await new Promise(resolve => setTimeout(resolve, 0));
+              currentWasm.resetSession();
+              currentWasm.setGeneratorType(currentGenType);
+              await generateAndStartTest();
+            } catch (error) {
+              console.error('[START] Error after mode switch:', error);
+              isStartingRef.current = false;
+              alert('Failed to start test. Please try again.');
+            }
+          } else if (attempts >= maxAttempts) {
+            clearInterval(checkModeSwitch);
+            console.warn('[START] Mode switch timeout, forcing reset');
+            isSwitchingModeRef.current = false;
+            setIsSwitchingMode(false);
+            isStartingRef.current = false;
+            alert('Mode switch is taking too long. Please try again.');
+          }
+        }, 50);
+        return;
+      }
+      
+      console.log('[START] Resetting WASM session');
+      // Use setTimeout to keep UI responsive
+      (async () => {
+        try {
+          await new Promise(resolve => setTimeout(resolve, 0));
+          currentWasm.resetSession();
+          currentWasm.setGeneratorType(currentGenType);
+          await generateAndStartTest();
+        } catch (error) {
+          console.error('[START] Error in async start:', error);
+          isStartingRef.current = false;
+        }
+      })();
+    } catch (error) {
+      console.error('[START] Error starting test:', error);
+      isStartingRef.current = false;
+      alert('Failed to start test. Please try again.');
+    }
+  }, [isWasmReady, isTestActive, isTestComplete]);
 
   const processInput = (inputValue) => {
     if (!isTestActive || isTestComplete) return;
+    
+    const currentWasm = wasmRef.current;
+    if (!currentWasm || !targetText) {
+      console.warn('[INPUT] WASM or target text not available');
+      return;
+    }
 
     let typed = inputValue;
     
@@ -200,24 +562,33 @@ export default function TypingTest() {
     }
     
     if (!hasStartedTyping && typed.length > 0) {
+      console.log('[INPUT] Starting typing session');
       setHasStartedTyping(true);
-      if (wasm && targetText) {
-        wasm.startSession(targetText);
+      try {
+        currentWasm.startSession(targetText);
+      } catch (error) {
+        console.error('[INPUT] Error starting session:', error);
+        return;
       }
     }
 
     setUserInput(typed);
     setTotalChars(typed.length);
 
-    if (wasm && hasStartedTyping) {
-      wasm.updateInput(typed);
-      const acc = wasm.getAccuracy();
-      setAccuracy(acc);
-      const correct = Math.round((acc / 100) * typed.length);
-      setCorrectChars(correct);
+    if (hasStartedTyping) {
+      try {
+        currentWasm.updateInput(typed);
+        const acc = currentWasm.getAccuracy();
+        setAccuracy(acc);
+        const correct = Math.round((acc / 100) * typed.length);
+        setCorrectChars(correct);
+      } catch (error) {
+        console.error('[INPUT] Error updating input:', error);
+      }
     }
 
     if (typed.length >= targetText.length) {
+      console.log('[INPUT] Test complete, finishing...');
       finishTest();
     }
   };
@@ -249,7 +620,7 @@ export default function TypingTest() {
   };
 
   const handleInputKeyDown = (e) => {
-    if (e.key === 'Tab' && isTestActive && !isTestComplete && wasm) {
+    if (e.key === 'Tab' && isTestActive && !isTestComplete && wasmRef.current && !isStartingRef.current && !isSwitchingModeRef.current) {
       e.preventDefault();
       restartTest();
     }
@@ -263,14 +634,22 @@ export default function TypingTest() {
     let finalAccuracy = 100;
     let finalTime = 0;
     
-    if (wasm && hasStartedTyping) {
-      const elapsed = wasm.getElapsedSeconds();
-      finalWpm = Math.round(wasm.getWPM(elapsed));
-      finalAccuracy = parseFloat(wasm.getAccuracy().toFixed(1));
-      finalTime = parseFloat(elapsed.toFixed(1));
-      setWpm(finalWpm);
-      setTimer(elapsed);
-      setAccuracy(finalAccuracy);
+    const currentWasm = wasmRef.current;
+    if (currentWasm && hasStartedTyping) {
+      try {
+        const elapsed = currentWasm.getElapsedSeconds();
+        finalWpm = Math.round(currentWasm.getWPM(elapsed));
+        finalAccuracy = parseFloat(currentWasm.getAccuracy().toFixed(1));
+        finalTime = parseFloat(elapsed.toFixed(1));
+        setWpm(finalWpm);
+        setTimer(elapsed);
+        setAccuracy(finalAccuracy);
+      } catch (error) {
+        console.error('Error finishing test:', error);
+        finalWpm = Math.round(wpm);
+        finalAccuracy = parseFloat(accuracy.toFixed(1));
+        finalTime = parseFloat(timer.toFixed(1));
+      }
     } else {
       finalWpm = Math.round(wpm);
       finalAccuracy = parseFloat(accuracy.toFixed(1));
@@ -436,8 +815,14 @@ export default function TypingTest() {
   };
 
   const goToHomeScreen = () => {
-    if (wasm) {
-      wasm.resetSession();
+    console.log('[HOME] Going to home screen');
+    const currentWasm = wasmRef.current;
+    if (currentWasm) {
+      try {
+        currentWasm.resetSession();
+      } catch (error) {
+        console.error('[HOME] Error resetting session:', error);
+      }
     }
     setTargetText('');
     setUserInput('');
@@ -452,6 +837,12 @@ export default function TypingTest() {
     setCurrentBestScore(null);
     setScoreUpdateStatus(null);
     setShowNameModal(false);
+    // Reset flags
+    isStartingRef.current = false;
+    isSwitchingModeRef.current = false;
+    setIsSwitchingMode(false);
+    modeSwitchTimeoutRef.current = null;
+    console.log('[HOME] All flags reset');
   };
 
   const renderText = () => {
@@ -575,26 +966,106 @@ export default function TypingTest() {
         {!isTestActive && (
           <div className="flex flex-col items-center gap-2 sm:gap-3 py-3 sm:py-4">
             <label className="text-[10px] sm:text-xs text-text-tertiary uppercase tracking-widest mb-0.5 sm:mb-1">
-              Text Type
+              Text Type {isWasmLoading && <span className="text-accent">(Loading...)</span>}
             </label>
             <div className="flex gap-1 sm:gap-2 bg-bg-secondary rounded-lg p-0.5 sm:p-1 border border-text-tertiary w-full max-w-md">
-              {Object.entries(GENERATOR_LABELS).map(([type, label]) => (
-                <button
-                  key={type}
-                  onClick={() => setGeneratorType(Number(type))}
-                  disabled={isTestActive}
-                  className={`flex-1 px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-md transition-all duration-200 ${
-                    generatorType === Number(type)
-                      ? 'bg-accent text-bg-primary shadow-md'
-                      : 'text-text-secondary hover:text-text-primary hover:bg-bg-tertiary'
-                  } ${isTestActive ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-                >
-                  <span className="hidden sm:inline">{label}</span>
-                  <span className="sm:hidden">
-                    {label === 'Random Words' ? 'Words' : label === 'Mixed Case' ? 'Mixed' : label}
-                  </span>
-                </button>
-              ))}
+              {Object.entries(GENERATOR_LABELS).map(([type, label]) => {
+                const typeNum = Number(type);
+                const isSelected = generatorType === typeNum;
+                const isDisabled = isTestActive || isSwitchingMode || isStartingRef.current || !isWasmReady;
+                
+                return (
+                  <button
+                    key={type}
+                    onClick={() => {
+                      const newType = typeNum;
+                      console.log('[MODE] Switching to mode:', newType, GENERATOR_LABELS[newType]);
+                      
+                      // Prevent switching if already switching or starting
+                      if (isSwitchingModeRef.current || isStartingRef.current) {
+                        console.warn('[MODE] Operation in progress, cannot switch mode', {
+                          switching: isSwitchingModeRef.current,
+                          starting: isStartingRef.current
+                        });
+                        return;
+                      }
+                      
+                      // Prevent switching if test is active
+                      if (isTestActive) {
+                        console.warn('[MODE] Test is active, cannot switch mode');
+                        return;
+                      }
+                      
+                    const currentWasm = wasmRef.current;
+                    if (currentWasm && isWasmReady) {
+                      // Use setTimeout to keep UI responsive
+                      setTimeout(async () => {
+                        try {
+                          // Set flags to prevent concurrent operations
+                          isSwitchingModeRef.current = true;
+                          setIsSwitchingMode(true);
+                          modeSwitchTimeoutRef.current = Date.now();
+                          
+                          console.log('[MODE] Resetting WASM session');
+                          
+                          // Yield to browser to keep UI responsive
+                          await new Promise(resolve => setTimeout(resolve, 0));
+                          
+                          currentWasm.resetSession();
+                          console.log('[MODE] Setting generator type to:', newType);
+                          currentWasm.setGeneratorType(newType);
+                          
+                          // Update state
+                          setGeneratorType(newType);
+                          generatorTypeRef.current = newType;
+                          setTargetText('');
+                          setUserInput('');
+                          setCurrentBestScore(null);
+                          setScoreUpdateStatus(null);
+                          
+                          console.log('[MODE] Mode switch complete');
+                          
+                          // Reset flags after operation completes
+                          setTimeout(() => {
+                            isSwitchingModeRef.current = false;
+                            setIsSwitchingMode(false);
+                            modeSwitchTimeoutRef.current = null;
+                            console.log('[MODE] Flags reset');
+                          }, 100);
+                        } catch (error) {
+                          console.error('[MODE] Error switching mode:', error);
+                          isSwitchingModeRef.current = false;
+                          setIsSwitchingMode(false);
+                          modeSwitchTimeoutRef.current = null;
+                          alert('Failed to switch mode. Please try again.');
+                        }
+                      }, 0);
+                    } else {
+                        // WASM not ready, just update state
+                        console.log('[MODE] WASM not ready, updating state only');
+                        setGeneratorType(newType);
+                        generatorTypeRef.current = newType;
+                      }
+                    }}
+                    disabled={isDisabled}
+                    className={`flex-1 px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-md transition-all duration-200 ${
+                      isSelected
+                        ? 'bg-accent text-bg-primary shadow-md'
+                        : 'text-text-secondary hover:text-text-primary hover:bg-bg-tertiary'
+                    } ${isDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'} ${
+                      isSwitchingMode && isSelected ? 'animate-pulse' : ''
+                    }`}
+                    title={isDisabled ? (isSwitchingMode ? 'Switching mode...' : isTestActive ? 'Test is active' : 'WASM not ready') : ''}
+                  >
+                    <span className="hidden sm:inline">
+                      {isSwitchingMode && isSelected ? '...' : label}
+                    </span>
+                    <span className="sm:hidden">
+                      {isSwitchingMode && isSelected ? '...' : (label === 'Random Words' ? 'Words' : label === 'Mixed Case' ? 'Mixed' : label)}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}
@@ -655,16 +1126,23 @@ export default function TypingTest() {
         <div className="flex justify-center items-center gap-3 sm:gap-4 py-4 sm:py-5">
           {!isTestActive && !isTestComplete && (
             <button 
-              onClick={startTest} 
-              className="flex items-center gap-1.5 sm:gap-2 px-4 sm:px-5 md:px-6 py-2 sm:py-2.5 md:py-3 text-sm sm:text-base rounded-md cursor-pointer transition-all duration-200 font-mono bg-accent text-bg-primary border border-accent font-semibold hover:bg-[#f5c842] hover:-translate-y-0.5 hover:shadow-[0_4px_16px_rgba(226,183,20,0.3)] active:translate-y-0"
+              onClick={startTest}
+              disabled={!isWasmReady || isWasmLoading || isSwitchingMode || isStartingRef.current}
+              className="flex items-center gap-1.5 sm:gap-2 px-4 sm:px-5 md:px-6 py-2 sm:py-2.5 md:py-3 text-sm sm:text-base rounded-md cursor-pointer transition-all duration-200 font-mono bg-accent text-bg-primary border border-accent font-semibold hover:bg-[#f5c842] hover:-translate-y-0.5 hover:shadow-[0_4px_16px_rgba(226,183,20,0.3)] active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-none"
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
+                  if (!isWasmReady || isWasmLoading || isSwitchingMode || isStartingRef.current) {
+                    return;
+                  }
                   startTest();
                 }
               }}
+              title={!isWasmReady || isWasmLoading ? 'WASM is loading...' : isSwitchingMode ? 'Switching mode...' : ''}
             >
-              <FiRefreshCw className="w-4 h-4 sm:w-[18px] sm:h-[18px]" />
-              <span>Start Test</span>
+              <FiRefreshCw className={`w-4 h-4 sm:w-[18px] sm:h-[18px] ${(isWasmLoading || isSwitchingMode) ? 'animate-spin' : ''}`} />
+              <span>
+                {isWasmLoading ? 'Loading...' : isSwitchingMode ? 'Switching...' : 'Start Test'}
+              </span>
             </button>
           )}
           

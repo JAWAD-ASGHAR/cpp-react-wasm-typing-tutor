@@ -48,37 +48,58 @@ extern "C" {
     
     EMSCRIPTEN_KEEPALIVE
     char* generateText(int wordCount) {
+        // Helper function to safely allocate and return empty string
+        auto returnEmptyString = []() -> char* {
+            char* result = (char*)calloc(1, 1);  // Use calloc for zero-initialization
+            return result;  // Returns nullptr if allocation fails, which is handled by JS
+        };
+        
         try {
             if (wordCount < 0) {
-                throw invalid_argument("Word count cannot be negative");
+                return returnEmptyString();
             }
-            if (!textGen) {
-                textGen = new RandomWordGenerator();
+            
+            // Get local pointer to prevent deletion during execution
+            TextGenerator* localGen = textGen;
+            if (!localGen) {
+                // Create default generator if none exists
+                localGen = new RandomWordGenerator();
+                textGen = localGen;
             }
-            string text = textGen->generateText(wordCount);
+            
+            // Generate text into local string (safe copy)
+            string text;
+            try {
+                text = localGen->generateText(wordCount);
+            } catch (...) {
+                // If generation fails, return empty string
+                return returnEmptyString();
+            }
+            
+            // Validate generated text
             if (text.empty() && wordCount > 0) {
-                throw runtime_error("Text generation failed");
+                return returnEmptyString();
             }
-            char* result = (char*)malloc(text.length() + 1);
+            
+            // Allocate memory with explicit size calculation
+            size_t textLen = text.length();
+            char* result = (char*)malloc(textLen + 1);
             if (!result) {
-                throw bad_alloc();
+                return nullptr;  // Let JS handle nullptr
             }
-            strcpy(result, text.c_str());
+            
+            // Copy string with explicit length and ensure null termination
+            if (textLen > 0) {
+                memcpy(result, text.c_str(), textLen);
+            }
+            result[textLen] = '\0';  // Explicit null termination
+            
             return result;
-        } catch (const invalid_argument& e) {
-            char* error = (char*)malloc(1);
-            if (error) error[0] = '\0';
-            return error;
-        } catch (const runtime_error& e) {
-            char* error = (char*)malloc(1);
-            if (error) error[0] = '\0';
-            return error;
         } catch (const bad_alloc& e) {
-            return nullptr;
+            return nullptr;  // Memory allocation failed
         } catch (...) {
-            char* error = (char*)malloc(1);
-            if (error) error[0] = '\0';
-            return error;
+            // Any other exception - return empty string
+            return returnEmptyString();
         }
     }
 
