@@ -1,0 +1,3 @@
+cd /Users/jawadasghar/Desktop/cpp-react-wasm-typing-tutor/build && make clean
+
+source ~/emsdk/emsdk_env.sh && cd /Users/jawadasghar/Desktop/cpp-react-wasm-typing-tutor/build && make

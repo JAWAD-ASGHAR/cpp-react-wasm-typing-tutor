@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "build:wasm": "bash -c 'source ~/emsdk/emsdk_env.sh && cd build && make clean && make && cd ..' && npm install"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.86.0",
